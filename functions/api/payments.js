@@ -40,10 +40,8 @@ export async function onRequestPost({ request, env }) {
     const db = getDB(env);
     const id = crypto.randomUUID();
     const createdAt = new Date().toISOString();
-    const date = data.date || createdAt.split('T')[0];
-
-    await db.prepare(`INSERT INTO payments (id, createdAt, companyName, date, amount, memo) VALUES (?, ?, ?, ?, ?, ?)`)
-      .bind(id, createdAt, data.companyName, date, data.amount, data.memo || '')
+    await db.prepare(`INSERT INTO payments (id, createdAt, companyName, amount, memo) VALUES (?, ?, ?, ?, ?)`)
+      .bind(id, createdAt, data.companyName, data.amount, data.memo || '')
       .run();
 
     return Response.json({ success: true, id, createdAt }, { headers: CORS });
