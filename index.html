@@ -44,23 +44,29 @@
     </div>
 
     <!-- Main Menu Area -->
-    <div id="menu-section" class="menu-grid" style="display: none;">
-      <div style="text-align: right; width: 100%; margin-bottom: 10px;">
-        <span id="welcome-text" style="font-weight: bold; margin-right: 10px;"></span>
-        <button onclick="logout()" class="btn-del" style="padding: 6px 12px; width: auto; font-size: 0.8rem;">로그아웃</button>
+    <div id="menu-section" style="display: none; width: 100%; max-width: 900px; margin: 0 auto; position: relative; z-index: 10;">
+      <div class="user-welcome-bar">
+        <div class="user-info">
+          <span class="user-avatar">👤</span>
+          <span id="welcome-text" class="user-name"></span>
+        </div>
+        <button onclick="logout()" class="btn-logout">로그아웃</button>
       </div>
-      <a href="sales.html" class="menu-card" id="btn-sales">
-        <div class="menu-icon">🧾</div>
-        <div class="menu-title">판매</div>
-        <div class="menu-subtitle">매출 · 미수금 관리</div>
-        <div class="menu-arrow">→</div>
-      </a>
-      <a href="purchase.html" class="menu-card" id="btn-purchase">
-        <div class="menu-icon">📦</div>
-        <div class="menu-title">수매</div>
-        <div class="menu-subtitle">매입 관리</div>
-        <div class="menu-arrow">→</div>
-      </a>
+
+      <div class="menu-grid">
+        <a href="sales.html" class="menu-card" id="btn-sales">
+          <div class="menu-icon">🧾</div>
+          <div class="menu-title">판매</div>
+          <div class="menu-subtitle">매출 · 미수금 관리</div>
+          <div class="menu-arrow">→</div>
+        </a>
+        <a href="purchase.html" class="menu-card" id="btn-purchase">
+          <div class="menu-icon">📦</div>
+          <div class="menu-title">수매</div>
+          <div class="menu-subtitle">매입 관리</div>
+          <div class="menu-arrow">→</div>
+        </a>
+      </div>
     </div>
 
     <div class="footer-tagline">정성으로 손질하고, 신선함으로 채웁니다.</div>
