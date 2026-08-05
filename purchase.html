@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>수매 관리 - 손질왕</title>
+  <meta name="description" content="손질왕 수매 관리 - 키로수, 단가, 합계 계산 및 기록">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ===== HEADER ===== -->
+  <header class="page-header">
+    <a href="index.html" class="btn-back" id="btn-back" aria-label="뒤로가기">←</a>
+    <img src="images/logo.png" alt="손질왕" class="header-logo">
+    <h1 class="page-title">수매</h1>
+  </header>
+
+  <main class="page-body">
+
+    <!-- ===== 수매 입력 폼 ===== -->
+    <div class="form-card">
+      <div class="section-title">📝 수매 입력</div>
+
+      <!-- 업체명 -->
+      <div class="form-group">
+        <label class="form-label" for="company-name-pur">업체명</label>
+        <input
+          type="text"
+          id="company-name-pur"
+          class="form-control"
+          placeholder="업체명을 입력하세요"
+          autocomplete="off"
+          list="company-datalist-pur"
+        >
+        <datalist id="company-datalist-pur"></datalist>
+      </div>
+
+      <!-- 키로수 × 단가 -->
+      <div class="calc-card" id="kilos-card-pur">
+        <div class="calc-card-label">키로수 × 단가</div>
+        <div class="calc-row">
+          <input type="number" id="kilos-pur" class="calc-input" placeholder="0.0" step="0.1" min="0" aria-label="키로수">
+          <span class="calc-op">×</span>
+          <input type="number" id="unit-price-pur" class="calc-input" placeholder="0" min="0" aria-label="단가">
+          <span class="calc-op">=</span>
+          <div class="calc-result" id="kilos-total-pur" aria-live="polite">0원</div>
+        </div>
+      </div>
+
+      <!-- 총합계 -->
+      <div class="total-card" aria-label="총합계">
+        <div class="total-label">총 합계</div>
+        <div class="total-right">
+          <span class="total-amount" id="grand-total-pur" aria-live="polite">0</span>
+          <span class="total-unit">원</span>
+        </div>
+      </div>
+
+      <!-- 날짜 -->
+      <div class="form-group">
+        <label class="form-label" for="purchase-date">날짜</label>
+        <input type="date" id="purchase-date" class="form-control">
+      </div>
+
+      <!-- 메모 -->
+      <div class="form-group">
+        <label class="form-label" for="purchase-memo">메모</label>
+        <input type="text" id="purchase-memo" class="form-control" placeholder="메모 (선택사항)">
+      </div>
+
+      <button type="button" class="btn-save" id="btn-save-purchase">
+        💾 저장하기
+      </button>
+    </div>
+
+    <!-- ===== 수매 기록 ===== -->
+    <div class="records-card">
+      <div class="records-header">
+        <div class="records-title">📋 수매 기록</div>
+        <div class="records-count" id="records-count-pur">0건</div>
+      </div>
+      <input type="text" class="records-search" id="records-search-pur" placeholder="🔍 업체명으로 검색...">
+      <div id="records-list-pur">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+  </main>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/purchase.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "sonjilwang",
+  "version": "1.0.0",
+  "description": "손질왕 판매 및 수매 관리 시스템",
+  "main": "index.html",
+  "scripts": {
+    "dev": "wrangler pages dev . --kv SONJILWANG_KV"
+  },
+  "devDependencies": {
+    "wrangler": "^3.60.0"
+  }
+}

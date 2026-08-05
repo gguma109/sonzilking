@@ -1,0 +1,13 @@
+# Cloudflare Pages Configuration
+name = "sonjilwang"
+compatibility_date = "2024-04-01"
+
+[pages]
+# Directory containing the static assets of your site
+directory = "."
+
+[[kv_namespaces]]
+binding = "SONJILWANG_KV"
+# Note: Local development uses a local mock KV store automatically.
+# When deploying to production on Cloudflare Pages, you must bind
+# a KV Namespace named 'SONJILWANG_KV' in the Pages project settings.
