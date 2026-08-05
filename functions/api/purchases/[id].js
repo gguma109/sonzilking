@@ -13,11 +13,12 @@ export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS });
 }
 
-export async function onRequestPut({ params, request, env }) {
+export async function onRequestPut({ env, request, params, data }) {
   try {
     const db = getDB(env);
     const body = await request.json();
     const id = params.id;
+    const userId = data.userId;
 
     const fields = [];
     const values = [];
@@ -38,10 +39,15 @@ export async function onRequestPut({ params, request, env }) {
     }
 
     values.push(id);
+    values.push(userId);
     
-    await db.prepare(`UPDATE purchases SET ${fields.join(', ')} WHERE id = ?`)
+    const info = await db.prepare(`UPDATE purchases SET ${fields.join(', ')} WHERE id = ? AND userId = ?`)
       .bind(...values)
       .run();
+
+    if (info.changes === 0) {
+      return Response.json({ success: false, message: "Record not found or unauthorized" }, { status: 404, headers: CORS });
+    }
 
     return Response.json({ success: true }, { headers: CORS });
   } catch (e) {
@@ -49,10 +55,15 @@ export async function onRequestPut({ params, request, env }) {
   }
 }
 
-export async function onRequestDelete({ params, env }) {
+export async function onRequestDelete({ env, params, data }) {
   try {
     const db = getDB(env);
-    await db.prepare(`DELETE FROM purchases WHERE id = ?`).bind(params.id).run();
+    const { id } = params;
+    const userId = data.userId;
+
+    const res = await db.prepare('DELETE FROM purchases WHERE id = ? AND userId = ?')
+      .bind(id, userId)
+      .run();
     return Response.json({ success: true }, { headers: CORS });
   } catch (e) {
     return Response.json({ success: false, error: e.message }, { status: 500, headers: CORS });

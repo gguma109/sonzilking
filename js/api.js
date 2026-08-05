@@ -6,6 +6,16 @@ const API = {
   baseUrl: '/api',
 
   async handleResponse(res) {
+    if (res.status === 401) {
+      // Token expired or invalid
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      if (window.location.pathname !== '/' && !window.location.pathname.endsWith('index.html')) {
+        window.location.href = '/';
+      }
+      throw new Error('세션이 만료되었습니다. 다시 로그인해주세요.');
+    }
+
     if (!res.ok) {
       try {
         const errData = await res.json();
@@ -22,15 +32,26 @@ const API = {
     return res.json();
   },
 
+  getHeaders() {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = localStorage.getItem('token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+  },
+
   async get(endpoint) {
-    const res = await fetch(`${this.baseUrl}/${endpoint}`);
+    const res = await fetch(`${this.baseUrl}/${endpoint}`, {
+      headers: this.getHeaders()
+    });
     return this.handleResponse(res);
   },
 
   async post(endpoint, data) {
     const res = await fetch(`${this.baseUrl}/${endpoint}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.getHeaders(),
       body: JSON.stringify(data)
     });
     return this.handleResponse(res);
@@ -39,7 +60,7 @@ const API = {
   async put(endpoint, data) {
     const res = await fetch(`${this.baseUrl}/${endpoint}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.getHeaders(),
       body: JSON.stringify(data)
     });
     return this.handleResponse(res);
@@ -47,7 +68,8 @@ const API = {
 
   async del(endpoint, id) {
     const res = await fetch(`${this.baseUrl}/${endpoint}/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: this.getHeaders()
     });
     return this.handleResponse(res);
   }

@@ -977,3 +977,9 @@ body {
   line-height: 1.5;
   color: var(--text-color);
 }
+
+
+/* Auth styles */
+.auth-card { max-width: 400px; margin: 40px auto; background: white; border-radius: 16px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+.auth-input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; transition: border 0.2s; }
+.auth-input:focus { border-color: #3b82f6; outline: none; }

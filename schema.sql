@@ -1,8 +1,26 @@
 -- schema.sql
 -- Database schema for 손질왕 D1 database
 
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  username TEXT UNIQUE NOT NULL,
+  passwordHash TEXT NOT NULL,
+  name TEXT NOT NULL,
+  nickname TEXT,
+  recoveryEmail TEXT,
+  createdAt TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  token TEXT PRIMARY KEY,
+  userId TEXT NOT NULL,
+  expiresAt TEXT NOT NULL,
+  createdAt TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS sales (
   id TEXT PRIMARY KEY,
+  userId TEXT,
   createdAt TEXT NOT NULL,
   companyName TEXT NOT NULL,
   date TEXT NOT NULL,
@@ -23,6 +41,7 @@ CREATE TABLE IF NOT EXISTS sales (
 
 CREATE TABLE IF NOT EXISTS purchases (
   id TEXT PRIMARY KEY,
+  userId TEXT,
   createdAt TEXT NOT NULL,
   companyName TEXT NOT NULL,
   date TEXT NOT NULL,
@@ -38,12 +57,14 @@ CREATE INDEX IF NOT EXISTS idx_purchases_company ON purchases(companyName);
 
 CREATE TABLE IF NOT EXISTS notes (
   id TEXT PRIMARY KEY,
+  userId TEXT,
   createdAt TEXT NOT NULL,
   content TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS payments (
   id TEXT PRIMARY KEY,
+  userId TEXT,
   createdAt TEXT NOT NULL,
   companyName TEXT NOT NULL,
   amount REAL NOT NULL,

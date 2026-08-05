@@ -17,17 +17,17 @@ export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS });
 }
 
-export async function onRequestGet({ env }) {
+export async function onRequestGet({ env, data }) {
   try {
     const db = getDB(env);
     const { results } = await db.prepare(`
       SELECT DISTINCT companyName FROM (
-        SELECT companyName FROM sales
+        SELECT companyName FROM sales WHERE userId = ?
         UNION
         SELECT companyName FROM purchases
       ) WHERE companyName IS NOT NULL AND companyName != ''
       ORDER BY companyName ASC
-    `).all();
+    `).bind(data.userId).all();
 
     const companies = results.map(r => r.companyName);
 

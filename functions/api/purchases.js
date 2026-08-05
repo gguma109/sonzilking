@@ -18,12 +18,13 @@ export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS });
 }
 
-export async function onRequestGet({ env }) {
+export async function onRequestGet({ env, data }) {
   try {
     const db = getDB(env);
+    const userId = data.userId;
     const { results } = await db.prepare(
-      "SELECT * FROM purchases ORDER BY date DESC, createdAt DESC"
-    ).all();
+      "SELECT * FROM purchases WHERE userId = ? ORDER BY date DESC, createdAt DESC"
+    ).bind(userId).all();
 
     return Response.json(
       { success: true, data: results },
@@ -34,18 +35,20 @@ export async function onRequestGet({ env }) {
   }
 }
 
-export async function onRequestPost({ env, request }) {
+export async function onRequestPost({ env, request, data }) {
   try {
     const db = getDB(env);
     const body = await request.json();
+    const userId = data.userId;
     const id = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const createdAt = new Date().toISOString();
 
     await db.prepare(`
-      INSERT INTO purchases (id, createdAt, companyName, date, kilos, unitPrice, total, kilosText, memo)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO purchases (id, userId, createdAt, companyName, date, kilos, unitPrice, total, kilosText, memo)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
+      userId,
       createdAt,
       body.companyName,
       body.date,

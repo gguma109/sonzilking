@@ -13,25 +13,26 @@ export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS });
 }
 
-export async function onRequestGet({ env }) {
+export async function onRequestGet({ env, data }) {
   try {
     const db = getDB(env);
-    const { results } = await db.prepare(`SELECT * FROM notes ORDER BY createdAt DESC`).all();
+    const { results } = await db.prepare(`SELECT * FROM notes WHERE userId = ? ORDER BY createdAt DESC').bind(data.userId).all();
+    //`).all();
     return Response.json({ success: true, data: results }, { headers: CORS });
   } catch (e) {
     return Response.json({ success: false, error: e.message }, { status: 500, headers: CORS });
   }
 }
 
-export async function onRequestPost({ request, env }) {
+export async function onRequestPost({ request, env, data }) {
   try {
     const data = await request.json();
     const db = getDB(env);
     const id = crypto.randomUUID();
     const createdAt = new Date().toISOString();
 
-    await db.prepare(`INSERT INTO notes (id, createdAt, content) VALUES (?, ?, ?)`)
-      .bind(id, createdAt, data.content)
+    await db.prepare(`INSERT INTO notes (id, userId, createdAt, content) VALUES (?, ?, ?)`)
+      .bind(id, data.userId, createdAt, data.content)
       .run();
 
     return Response.json({ success: true, id, createdAt }, { headers: CORS });

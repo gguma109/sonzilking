@@ -1,0 +1,3 @@
+ALTER TABLE sales ADD COLUMN kilosText TEXT;
+ALTER TABLE sales ADD COLUMN addText TEXT;
+ALTER TABLE purchases ADD COLUMN kilosText TEXT;

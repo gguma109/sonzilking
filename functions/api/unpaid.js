@@ -17,21 +17,21 @@ export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS });
 }
 
-export async function onRequestGet({ env }) {
+export async function onRequestGet({ env, data }) {
   try {
     const db = getDB(env);
     // 진짜 회계 장부식 계산: (판매 총액) - (수금 총액)
     const { results } = await db.prepare(`
       SELECT companyName, SUM(balance) as balance 
       FROM (
-        SELECT companyName, total as balance FROM sales
+        SELECT companyName, total as balance FROM sales WHERE userId = ?
         UNION ALL
-        SELECT companyName, -amount as balance FROM payments
+        SELECT companyName, -amount as balance FROM payments WHERE userId = ?
       )
       GROUP BY companyName 
       HAVING balance > 0
       ORDER BY balance DESC, companyName ASC
-    `).all();
+    `).bind(data.userId, data.userId).all();
 
     return Response.json(
       { success: true, data: results },
