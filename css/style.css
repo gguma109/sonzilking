@@ -729,6 +729,120 @@ body {
 }
 
 /* ===========================
+   MODAL & FAB
+=========================== */
+.fab-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: white;
+  border: none;
+  box-shadow: 0 4px 16px rgba(43, 86, 180, 0.4);
+  font-size: 1.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 100;
+  transition: var(--transition);
+}
+
+.fab-btn:hover {
+  transform: scale(1.08) translateY(-4px);
+  box-shadow: 0 8px 24px rgba(43, 86, 180, 0.5);
+}
+
+.fab-btn:active {
+  transform: scale(0.95);
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(13, 27, 62, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end; /* Mobile friendly bottom sheet style */
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Modal Content (Form Card overrides) */
+.modal-content {
+  background: var(--bg-main);
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 24px 24px 0 0;
+  padding: 24px 20px;
+  transform: translateY(100%);
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 -8px 30px rgba(0,0,0,0.15);
+}
+
+@media (min-width: 680px) {
+  .modal-overlay {
+    align-items: center;
+  }
+  .modal-content {
+    border-radius: var(--radius-lg);
+    max-height: 85vh;
+  }
+}
+
+.modal-overlay.active .modal-content {
+  transform: translateY(0);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.modal-header .section-title {
+  margin-bottom: 0;
+  font-size: 1.1rem;
+}
+
+.modal-header .section-title::after {
+  display: none;
+}
+
+.btn-close-modal {
+  background: transparent;
+  border: none;
+  font-size: 1.4rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  transition: var(--transition);
+}
+
+.btn-close-modal:hover {
+  color: var(--danger);
+  transform: rotate(90deg);
+}
+
+/* ===========================
    RESPONSIVE
 =========================== */
 @media (max-width: 480px) {
@@ -740,6 +854,7 @@ body {
   .total-amount { font-size: 1.5rem; }
   .calc-input { min-width: 58px; font-size: 0.88rem; }
   .calc-result { min-width: 78px; font-size: 0.82rem; }
+  .fab-btn { right: 16px; bottom: 16px; width: 50px; height: 50px; font-size: 1.5rem; }
 }
 
 @media (max-width: 360px) {

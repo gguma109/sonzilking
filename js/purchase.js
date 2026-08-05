@@ -14,6 +14,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-save-purchase').addEventListener('click', savePurchase);
   document.getElementById('records-search-pur').addEventListener('input', filterPurchaseRecords);
 
+  // 모달 제어
+  const modal = document.getElementById('form-modal');
+  document.getElementById('btn-open-modal').addEventListener('click', () => modal.classList.add('active'));
+  document.getElementById('btn-close-modal').addEventListener('click', () => modal.classList.remove('active'));
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.classList.remove('active');
+  });
+
   await loadCompanies();
   await loadPurchaseRecords();
 });
@@ -109,6 +117,9 @@ function resetPurchaseForm() {
   });
   document.getElementById('purchase-date').value = getTodayDate();
   calculatePurchase();
+  
+  // 성공 후 폼 닫기
+  document.getElementById('form-modal').classList.remove('active');
 }
 
 // ---- 기록 로드 ----

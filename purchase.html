@@ -21,9 +21,13 @@
 
   <main class="page-body">
 
-    <!-- ===== 수매 입력 폼 ===== -->
-    <div class="form-card">
-      <div class="section-title">📝 수매 입력</div>
+    <!-- ===== 모달 오버레이 (수매 입력 폼) ===== -->
+    <div class="modal-overlay" id="form-modal">
+      <div class="form-card modal-content">
+        <div class="modal-header">
+          <div class="section-title">📝 수매 입력</div>
+          <button class="btn-close-modal" id="btn-close-modal">✖</button>
+        </div>
 
       <!-- 업체명 -->
       <div class="form-group">
@@ -76,7 +80,8 @@
       <button type="button" class="btn-save" id="btn-save-purchase">
         💾 저장하기
       </button>
-    </div>
+      </div> <!-- /.modal-content -->
+    </div> <!-- /.modal-overlay -->
 
     <!-- ===== 수매 기록 ===== -->
     <div class="records-card">
@@ -89,6 +94,9 @@
         <div class="loading"><div class="spinner"></div></div>
       </div>
     </div>
+
+    <!-- ===== 플로팅 작성 버튼 ===== -->
+    <button class="fab-btn" id="btn-open-modal" aria-label="수매 기록 추가">➕</button>
 
   </main>
 

@@ -23,6 +23,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 저장 버튼
   document.getElementById('btn-save-sales').addEventListener('click', saveSale);
 
+  // 모달 제어
+  const modal = document.getElementById('form-modal');
+  document.getElementById('btn-open-modal').addEventListener('click', () => modal.classList.add('active'));
+  document.getElementById('btn-close-modal').addEventListener('click', () => modal.classList.remove('active'));
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.classList.remove('active');
+  });
+
   // 검색
   document.getElementById('records-search').addEventListener('input', filterSalesRecords);
 
@@ -166,6 +174,9 @@ function resetSalesForm() {
   document.getElementById('sale-date').value = getTodayDate();
   document.getElementById('alert-unpaid').style.display = 'none';
   calculateSales();
+  
+  // 성공 후 폼 닫기
+  document.getElementById('form-modal').classList.remove('active');
 }
 
 // ---- 기록 로드 ----
