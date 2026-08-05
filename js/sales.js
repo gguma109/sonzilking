@@ -61,8 +61,6 @@ function calculateSales() {
 
   if (commissionRate > 0) {
     commissionAmount = grandTotal * (commissionRate / 100);
-    // 수수료가 입력된 경우, 받을 돈(총 미수금)은 판매 대금이 아니라 "수수료 금액 자체"가 됩니다.
-    grandTotal = commissionAmount; 
   }
 
   // 화면 업데이트
@@ -70,7 +68,7 @@ function calculateSales() {
   document.getElementById('preview-add').textContent = formatNumber(addTotal) + '원';
   
   if (commissionRate > 0) {
-    document.getElementById('commission-amount').textContent = `${commissionRate}% (총액: ${formatNumber(grandTotal)}원)`;
+    document.getElementById('commission-amount').textContent = `${formatNumber(commissionAmount)}원`;
   } else {
     document.getElementById('commission-amount').textContent = '0원';
   }
@@ -265,7 +263,7 @@ function renderSalesRecords(records) {
         <div style="font-size:0.8rem; color:#555; background:#f5f6f8; padding:8px; border-radius:6px; margin-bottom:6px;">
           ${r.kilosText ? `<div>🐟 <b>입력:</b> ${escapeHtml(r.kilosText)} = ${formatNumber(r.kilosTotal)}원</div>` : ''}
           ${r.addText ? `<div>📦 <b>부대비용:</b> ${escapeHtml(r.addText)} = ${formatNumber(r.addTotal)}원</div>` : ''}
-          ${r.commissionRate > 0 ? `<div>🧾 <b>수수료:</b> ${r.commissionRate}% = ${formatNumber(r.commissionAmount)}원 (총 수매대금 대신 수수료만 청구)</div>` : ''}
+          ${r.commissionRate > 0 ? `<div>🧾 <b>수수료:</b> ${r.commissionRate}% = ${formatNumber(r.commissionAmount)}원</div>` : ''}
         </div>
       `;
     }
