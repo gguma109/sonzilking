@@ -365,6 +365,33 @@ body {
 
 .form-control::placeholder { color: var(--text-muted); font-weight: 400; }
 
+/* Company Chips */
+.company-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.chip {
+  background: white;
+  border: 1px solid var(--border);
+  color: var(--primary-dark);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.chip:hover {
+  border-color: var(--primary);
+  background: var(--primary-pale);
+  transform: translateY(-1px);
+}
+
 /* ===========================
    CALC ROWS
 =========================== */
@@ -570,18 +597,19 @@ body {
 
 /* Record Item */
 .record-item {
-  background: #f8faff;
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius);
-  padding: 12px 14px;
-  margin-bottom: 8px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  margin-bottom: 14px;
   transition: var(--transition);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.04);
 }
 
 .record-item:hover {
   border-color: var(--primary-light);
-  box-shadow: var(--shadow-sm);
-  background: #f2f7ff;
+  box-shadow: var(--shadow);
+  transform: translateY(-2px);
 }
 
 .record-item:last-child { margin-bottom: 0; }

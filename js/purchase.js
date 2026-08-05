@@ -30,17 +30,35 @@ function calculatePurchase() {
   return { kilos, unitPrice, total };
 }
 
-// ---- 업체명 자동완성 ----
+// ---- 업체명 자동완성 및 칩 ----
 async function loadCompanies() {
   try {
     const data = await API.get('companies');
+    const companies = data.companies || [];
+
+    // Datalist 업데이트
     const datalist = document.getElementById('company-datalist-pur');
     datalist.innerHTML = '';
-    (data.companies || []).forEach(name => {
+    companies.forEach(name => {
       const opt = document.createElement('option');
       opt.value = name;
       datalist.appendChild(opt);
     });
+
+    // 칩 (버튼) 업데이트
+    const chipsContainer = document.getElementById('company-chips-pur');
+    if (chipsContainer) {
+      chipsContainer.innerHTML = '';
+      companies.forEach(name => {
+        const chip = document.createElement('div');
+        chip.className = 'chip';
+        chip.textContent = name;
+        chip.onclick = () => {
+          document.getElementById('company-name-pur').value = name;
+        };
+        chipsContainer.appendChild(chip);
+      });
+    }
   } catch {
     // 무시
   }

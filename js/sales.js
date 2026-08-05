@@ -78,17 +78,36 @@ async function checkUnpaidBalance() {
   }
 }
 
-// ---- 업체명 자동완성 ----
+// ---- 업체명 자동완성 및 칩 ----
 async function loadCompanies() {
   try {
     const data = await API.get('companies');
+    const companies = data.companies || [];
+    
+    // Datalist 업데이트
     const datalist = document.getElementById('company-datalist');
     datalist.innerHTML = '';
-    (data.companies || []).forEach(name => {
+    companies.forEach(name => {
       const opt = document.createElement('option');
       opt.value = name;
       datalist.appendChild(opt);
     });
+
+    // 칩 (버튼) 업데이트
+    const chipsContainer = document.getElementById('company-chips');
+    if (chipsContainer) {
+      chipsContainer.innerHTML = '';
+      companies.forEach(name => {
+        const chip = document.createElement('div');
+        chip.className = 'chip';
+        chip.textContent = name;
+        chip.onclick = () => {
+          document.getElementById('company-name').value = name;
+          checkUnpaidBalance(); // 미수금 조회 실행
+        };
+        chipsContainer.appendChild(chip);
+      });
+    }
   } catch {
     // 업체 목록 로드 실패 시 무시
   }
