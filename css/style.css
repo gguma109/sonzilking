@@ -335,7 +335,7 @@ body {
 }
 
 .section-title::after {
-  content: '';
+  content: '🧮';
   flex: 1;
   height: 1px;
   background: var(--border);
@@ -509,7 +509,7 @@ body {
 }
 
 .total-card::after {
-  content: '';
+  content: '🧮';
   position: absolute;
   top: -30px; right: -30px;
   width: 120px; height: 120px;
@@ -544,7 +544,7 @@ body {
 }
 
 .btn-save::before {
-  content: '';
+  content: '🧮';
   position: absolute;
   inset: 0;
   background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
@@ -951,7 +951,7 @@ body {
 }
 
 .calc-preview::before {
-  content: '?��';
+  content: '🧮';
 }
 
 /* Notepad */
