@@ -1,6 +1,6 @@
 // ===================================================
 // functions/api/companies.js
-// GET /api/companies  → 모든 업체명 목록 조회
+// GET /api/companies  → 모든 업체명 목록 조회 (D1)
 // ===================================================
 
 const CORS = {
@@ -15,8 +15,17 @@ export async function onRequestOptions() {
 
 export async function onRequestGet({ env }) {
   try {
-    const listJson = await env.SONJILWANG_KV.get('companies:list');
-    const companies = listJson ? JSON.parse(listJson) : [];
+    const { results } = await env.DB.prepare(`
+      SELECT DISTINCT companyName FROM (
+        SELECT companyName FROM sales
+        UNION
+        SELECT companyName FROM purchases
+      ) WHERE companyName IS NOT NULL AND companyName != ''
+      ORDER BY companyName ASC
+    `).all();
+
+    const companies = results.map(r => r.companyName);
+
     return Response.json(
       { success: true, companies },
       { headers: CORS }

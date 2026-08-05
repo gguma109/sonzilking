@@ -6,8 +6,9 @@ compatibility_date = "2024-04-01"
 # Directory containing the static assets of your site
 directory = "."
 
-[[kv_namespaces]]
-binding = "SONJILWANG_KV"
-# Note: Local development uses a local mock KV store automatically.
+[[d1_databases]]
+binding = "DB"
+database_name = "sonjilwang-db"
+# Note: For local development, wrangler uses a local SQLite mock.
 # When deploying to production on Cloudflare Pages, you must bind
-# a KV Namespace named 'SONJILWANG_KV' in the Pages project settings.
+# a D1 database to the binding name 'DB' in the Pages project settings.

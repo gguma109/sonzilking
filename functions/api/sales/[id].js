@@ -1,6 +1,7 @@
 // ===================================================
 // functions/api/sales/[id].js
-// DELETE /api/sales/:id  → 판매 기록 삭제
+// DELETE /api/sales/:id  → 판매 기록 삭제 (D1)
+// PUT    /api/sales/:id  → 판매 기록 수납 완료 상태변경 (D1)
 // ===================================================
 
 const CORS = {
@@ -16,14 +17,7 @@ export async function onRequestOptions() {
 export async function onRequestDelete({ env, params }) {
   const id = params.id;
   try {
-    // 레코드 삭제
-    await env.SONJILWANG_KV.delete(`sales:${id}`);
-
-    // 목록에서 제거
-    const listJson = await env.SONJILWANG_KV.get('sales:list');
-    const ids = listJson ? JSON.parse(listJson) : [];
-    await env.SONJILWANG_KV.put('sales:list', JSON.stringify(ids.filter(i => i !== id)));
-
+    await env.DB.prepare("DELETE FROM sales WHERE id = ?").bind(id).run();
     return Response.json({ success: true }, { headers: CORS });
   } catch (e) {
     return Response.json({ success: false, error: e.message }, { status: 500, headers: CORS });
@@ -34,15 +28,16 @@ export async function onRequestPut({ env, params, request }) {
   const id = params.id;
   try {
     const body = await request.json();
-    const key = `sales:${id}`;
-    const val = await env.SONJILWANG_KV.get(key);
-    if (!val) {
-      return Response.json({ success: false, error: 'Not Found' }, { status: 404, headers: CORS });
+    
+    // unpaid 필드 업데이트 (boolean -> D1 integer)
+    if (body.unpaid !== undefined) {
+      const unpaidVal = body.unpaid ? 1 : 0;
+      await env.DB.prepare("UPDATE sales SET unpaid = ? WHERE id = ?")
+        .bind(unpaidVal, id)
+        .run();
     }
-    const record = JSON.parse(val);
-    const updatedRecord = { ...record, ...body };
-    await env.SONJILWANG_KV.put(key, JSON.stringify(updatedRecord));
-    return Response.json({ success: true, data: updatedRecord }, { headers: CORS });
+
+    return Response.json({ success: true }, { headers: CORS });
   } catch (e) {
     return Response.json({ success: false, error: e.message }, { status: 500, headers: CORS });
   }

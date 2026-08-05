@@ -1,7 +1,7 @@
 // ===================================================
 // functions/api/sales.js
-// GET  /api/sales  → 판매 기록 전체 조회
-// POST /api/sales  → 판매 기록 저장
+// GET  /api/sales  → 판매 기록 전체 조회 (D1)
+// POST /api/sales  → 판매 기록 저장 (D1)
 // ===================================================
 
 const CORS = {
@@ -16,19 +16,18 @@ export async function onRequestOptions() {
 
 export async function onRequestGet({ env }) {
   try {
-    const listJson = await env.SONJILWANG_KV.get('sales:list');
-    const ids = listJson ? JSON.parse(listJson) : [];
+    const { results } = await env.DB.prepare(
+      "SELECT * FROM sales ORDER BY date DESC, createdAt DESC"
+    ).all();
 
-    const records = await Promise.all(
-      ids.map(id =>
-        env.SONJILWANG_KV.get(`sales:${id}`)
-          .then(r => (r ? JSON.parse(r) : null))
-          .catch(() => null)
-      )
-    );
+    // D1에서는 boolean이 1 또는 0으로 저장되므로 JS boolean으로 가공
+    const data = results.map(r => ({
+      ...r,
+      unpaid: r.unpaid === 1
+    }));
 
     return Response.json(
-      { success: true, data: records.filter(Boolean) },
+      { success: true, data },
       { headers: CORS }
     );
   } catch (e) {
@@ -40,33 +39,42 @@ export async function onRequestPost({ env, request }) {
   try {
     const body = await request.json();
     const id = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    const record = { id, createdAt: new Date().toISOString(), ...body };
+    const createdAt = new Date().toISOString();
 
-    // 개별 레코드 저장
-    await env.SONJILWANG_KV.put(`sales:${id}`, JSON.stringify(record));
+    const unpaidVal = body.unpaid !== false ? 1 : 0;
 
-    // 목록 업데이트 (최신순)
-    const listJson = await env.SONJILWANG_KV.get('sales:list');
-    const ids = listJson ? JSON.parse(listJson) : [];
-    ids.unshift(id);
-    await env.SONJILWANG_KV.put('sales:list', JSON.stringify(ids));
+    await env.DB.prepare(`
+      INSERT INTO sales (
+        id, createdAt, companyName, date, kilos, unitPrice, kilosTotal,
+        addQty, addPrice, addTotal, commissionRate, commissionAmount, total, unpaid, memo
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      id,
+      createdAt,
+      body.companyName,
+      body.date,
+      body.kilos || 0,
+      body.unitPrice || 0,
+      body.kilosTotal || 0,
+      body.addQty || 0,
+      body.addPrice || 0,
+      body.addTotal || 0,
+      body.commissionRate || 0,
+      body.commissionAmount || 0,
+      body.total || 0,
+      unpaidVal,
+      body.memo || ''
+    ).run();
 
-    // 업체명 목록 업데이트
-    if (body.companyName) {
-      await upsertCompany(env, body.companyName);
-    }
+    const savedRecord = {
+      id,
+      createdAt,
+      ...body,
+      unpaid: body.unpaid !== false
+    };
 
-    return Response.json({ success: true, data: record }, { headers: CORS });
+    return Response.json({ success: true, data: savedRecord }, { headers: CORS });
   } catch (e) {
     return Response.json({ success: false, error: e.message }, { status: 500, headers: CORS });
-  }
-}
-
-async function upsertCompany(env, name) {
-  const listJson = await env.SONJILWANG_KV.get('companies:list');
-  const companies = listJson ? JSON.parse(listJson) : [];
-  if (!companies.includes(name)) {
-    companies.push(name);
-    await env.SONJILWANG_KV.put('companies:list', JSON.stringify(companies));
   }
 }

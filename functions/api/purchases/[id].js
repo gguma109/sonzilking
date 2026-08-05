@@ -1,6 +1,6 @@
 // ===================================================
 // functions/api/purchases/[id].js
-// DELETE /api/purchases/:id  → 수매 기록 삭제
+// DELETE /api/purchases/:id  → 수매 기록 삭제 (D1)
 // ===================================================
 
 const CORS = {
@@ -16,14 +16,7 @@ export async function onRequestOptions() {
 export async function onRequestDelete({ env, params }) {
   const id = params.id;
   try {
-    // 레코드 삭제
-    await env.SONJILWANG_KV.delete(`purchases:${id}`);
-
-    // 목록에서 제거
-    const listJson = await env.SONJILWANG_KV.get('purchases:list');
-    const ids = listJson ? JSON.parse(listJson) : [];
-    await env.SONJILWANG_KV.put('purchases:list', JSON.stringify(ids.filter(i => i !== id)));
-
+    await env.DB.prepare("DELETE FROM purchases WHERE id = ?").bind(id).run();
     return Response.json({ success: true }, { headers: CORS });
   } catch (e) {
     return Response.json({ success: false, error: e.message }, { status: 500, headers: CORS });
