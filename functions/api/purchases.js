@@ -42,8 +42,8 @@ export async function onRequestPost({ env, request }) {
     const createdAt = new Date().toISOString();
 
     await db.prepare(`
-      INSERT INTO purchases (id, createdAt, companyName, date, kilos, unitPrice, total, memo)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO purchases (id, createdAt, companyName, date, kilos, unitPrice, total, kilosText, memo)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
       createdAt,
@@ -52,6 +52,7 @@ export async function onRequestPost({ env, request }) {
       body.kilos || 0,
       body.unitPrice || 0,
       body.total || 0,
+      body.kilosText || '',
       body.memo || ''
     ).run();
 

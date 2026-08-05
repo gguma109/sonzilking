@@ -3,6 +3,7 @@
 // ===================================================
 
 let allPurchaseRecords = [];
+let editPurchaseId = null; // 현재 편집 중인 레코드 ID
 
 document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('purchase-date').value = getTodayDate();
@@ -83,6 +84,7 @@ async function savePurchase() {
     kilos: values.kilos,
     unitPrice: values.unitPrice,
     total: values.total,
+    kilosText: document.getElementById('calc-kilos-pur').value,
     memo: document.getElementById('purchase-memo').value.trim()
   };
 
@@ -90,8 +92,14 @@ async function savePurchase() {
   btn.textContent = '저장 중...';
 
   try {
-    await API.post('purchases', record);
-    showToast('✅ 수매 기록이 저장되었습니다');
+    if (editPurchaseId) {
+      await API.put(`purchases/${editPurchaseId}`, record);
+      showToast('✅ 수매 기록이 수정되었습니다');
+    } else {
+      await API.post('purchases', record);
+      showToast('✅ 수매 기록이 저장되었습니다');
+    }
+
     resetPurchaseForm();
     await loadCompanies();
     await loadPurchaseRecords();
@@ -110,7 +118,26 @@ function resetPurchaseForm() {
   });
   document.getElementById('purchase-date').value = getTodayDate();
   calculatePurchase();
+  editPurchaseId = null;
+  document.querySelector('#form-modal .section-title').textContent = '📝 수매 입력';
   document.getElementById('form-modal').classList.remove('active');
+}
+
+// ---- 편집(수정) 기능 ----
+function editPurchaseRecord(id) {
+  const record = allPurchaseRecords.find(r => r.id === id);
+  if (!record) return;
+
+  editPurchaseId = id;
+  document.querySelector('#form-modal .section-title').textContent = '✏️ 수매 기록 수정';
+
+  document.getElementById('company-name-pur').value = record.companyName;
+  document.getElementById('calc-kilos-pur').value = record.kilosText || '';
+  document.getElementById('purchase-date').value = (record.date || record.createdAt).split('T')[0];
+  document.getElementById('purchase-memo').value = record.memo || '';
+
+  calculatePurchase();
+  document.getElementById('form-modal').classList.add('active');
 }
 
 // ---- 기록 로드 ----
@@ -137,22 +164,39 @@ function renderPurchaseRecords(records) {
     return;
   }
 
-  container.innerHTML = records.map(r => `
+  container.innerHTML = records.map(r => {
+    const isOldRecord = !r.kilosText && r.total > 0;
+    
+    let detailHTML = '';
+    if (isOldRecord) {
+      detailHTML = `수매액: ${formatNumber(r.total)}원`;
+    } else {
+      detailHTML = `
+        <div style="font-size:0.8rem; color:#555; background:#f5f6f8; padding:8px; border-radius:6px; margin-bottom:6px;">
+          ${r.kilosText ? `<div>🐙 <b>입력:</b> ${escapeHtml(r.kilosText)} = ${formatNumber(r.total)}원</div>` : ''}
+        </div>
+      `;
+    }
+
+    return `
     <div class="record-item" id="pur-rec-${r.id}">
       <div class="record-header">
         <div class="record-company">${escapeHtml(r.companyName)}</div>
         <div class="record-date">${formatDate(r.date || r.createdAt)}</div>
       </div>
       <div class="record-body">
-        <div class="record-detail">수매액: ${formatNumber(r.total)}원</div>
-        <div class="record-total">${formatNumber(r.total)}원</div>
+        <div class="record-detail" style="width: 100%;">
+          ${detailHTML}
+        </div>
+        <div class="record-total" style="text-align: right; width: 100%; margin-top: 4px;">총 ${formatNumber(r.total)}원</div>
       </div>
       ${r.memo ? `<div class="record-memo">📝 ${escapeHtml(r.memo)}</div>` : ''}
       <div class="record-actions">
+        <button class="btn-pay" style="padding: 4px 12px; font-size: 0.72rem; margin-right:4px;" onclick="editPurchaseRecord('${r.id}')">✏️ 편집</button>
         <button class="btn-delete" onclick="deletePurchaseRecord('${r.id}')">🗑 삭제</button>
       </div>
     </div>
-  `).join('');
+  `}).join('');
 }
 
 // ---- 검색 ----

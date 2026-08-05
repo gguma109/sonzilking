@@ -46,31 +46,25 @@ export async function onRequestPost({ env, request }) {
     const body = await request.json();
     const id = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const createdAt = new Date().toISOString();
-
-    const unpaidVal = body.unpaid !== false ? 1 : 0;
+    const date = body.date;
 
     await db.prepare(`
       INSERT INTO sales (
-        id, createdAt, companyName, date, kilos, unitPrice, kilosTotal,
-        addQty, addPrice, addTotal, commissionRate, commissionAmount, total, unpaid, memo
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      id,
-      createdAt,
-      body.companyName,
-      body.date,
-      body.kilos || 0,
-      body.unitPrice || 0,
-      body.kilosTotal || 0,
-      body.addQty || 0,
-      body.addPrice || 0,
-      body.addTotal || 0,
-      body.commissionRate || 0,
-      body.commissionAmount || 0,
-      body.total || 0,
-      unpaidVal,
-      body.memo || ''
-    ).run();
+        id, createdAt, companyName, date, 
+        kilos, unitPrice, kilosTotal, kilosText,
+        addQty, addPrice, addTotal, addText,
+        commissionRate, commissionAmount, total, unpaid, memo
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+      .bind(
+        id, createdAt, body.companyName, date,
+        body.kilos || 0, body.unitPrice || 0, body.kilosTotal || 0, body.kilosText || '',
+        body.addQty || 0, body.addPrice || 0, body.addTotal || 0, body.addText || '',
+        body.commissionRate || 0, body.commissionAmount || 0, body.total || 0, 
+        (body.unpaid === false || body.unpaid === 0) ? 0 : 1, 
+        body.memo || ''
+      )
+      .run();
 
     const savedRecord = {
       id,

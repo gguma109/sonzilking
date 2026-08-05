@@ -7,15 +7,17 @@ CREATE TABLE IF NOT EXISTS sales (
   companyName TEXT NOT NULL,
   date TEXT NOT NULL,
   kilos REAL NOT NULL,
-  unitPrice REAL NOT NULL,
-  kilosTotal REAL NOT NULL,
-  addQty REAL DEFAULT 0,
-  addPrice REAL DEFAULT 0,
-  addTotal REAL DEFAULT 0,
-  commissionRate REAL DEFAULT 0,
-  commissionAmount REAL DEFAULT 0,
-  total REAL NOT NULL,
-  unpaid INTEGER DEFAULT 1, -- 1: 미수 (True), 0: 완납 (False)
+  unitPrice INTEGER NOT NULL,
+  kilosTotal INTEGER NOT NULL,
+  kilosText TEXT,
+  addQty REAL,
+  addPrice INTEGER,
+  addTotal INTEGER,
+  addText TEXT,
+  commissionRate REAL,
+  commissionAmount INTEGER,
+  total INTEGER NOT NULL,
+  unpaid INTEGER DEFAULT 1,
   memo TEXT
 );
 
@@ -25,8 +27,9 @@ CREATE TABLE IF NOT EXISTS purchases (
   companyName TEXT NOT NULL,
   date TEXT NOT NULL,
   kilos REAL NOT NULL,
-  unitPrice REAL NOT NULL,
-  total REAL NOT NULL,
+  unitPrice INTEGER NOT NULL,
+  total INTEGER NOT NULL,
+  kilosText TEXT,
   memo TEXT
 );
 

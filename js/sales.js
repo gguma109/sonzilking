@@ -4,6 +4,7 @@
 
 let allSalesRecords = [];
 let allUnpaidRecords = [];
+let editSalesId = null; // 현재 편집 중인 레코드 ID;
 
 document.addEventListener('DOMContentLoaded', async () => {
   // 기본 날짜
@@ -142,9 +143,11 @@ async function saveSale() {
     kilos: values.kilos,
     unitPrice: values.unitPrice,
     kilosTotal: values.kilosTotal,
+    kilosText: document.getElementById('calc-kilos').value,
     addQty: values.addQty,
     addPrice: values.addPrice,
     addTotal: values.addTotal,
+    addText: document.getElementById('calc-add').value,
     commissionRate: values.commissionRate,
     commissionAmount: values.commissionAmount,
     total: values.grandTotal,
@@ -156,8 +159,14 @@ async function saveSale() {
   btn.textContent = '저장 중...';
 
   try {
-    await API.post('sales', record);
-    showToast('✅ 판매 기록이 저장되었습니다');
+    if (editSalesId) {
+      await API.put(`sales/${editSalesId}`, record);
+      showToast('✅ 판매 기록이 수정되었습니다');
+    } else {
+      await API.post('sales', record);
+      showToast('✅ 판매 기록이 저장되었습니다');
+    }
+    
     resetSalesForm();
     await loadCompanies();
     await loadSalesRecords();
@@ -177,7 +186,29 @@ function resetSalesForm() {
   document.getElementById('sale-date').value = getTodayDate();
   document.getElementById('alert-unpaid').style.display = 'none';
   calculateSales();
+  editSalesId = null; // 편집 모드 초기화
+  document.querySelector('#form-modal .section-title').textContent = '📝 판매 입력';
   document.getElementById('form-modal').classList.remove('active');
+}
+
+// ---- 편집(수정) 기능 ----
+function editSaleRecord(id) {
+  const record = allSalesRecords.find(r => r.id === id);
+  if (!record) return;
+
+  editSalesId = id;
+  document.querySelector('#form-modal .section-title').textContent = '✏️ 판매 기록 수정';
+
+  document.getElementById('company-name').value = record.companyName;
+  document.getElementById('calc-kilos').value = record.kilosText || '';
+  document.getElementById('calc-add').value = record.addText || '';
+  document.getElementById('commission-rate').value = record.commissionRate || '';
+  document.getElementById('sale-date').value = (record.date || record.createdAt).split('T')[0];
+  document.getElementById('sale-memo').value = record.memo || '';
+
+  calculateSales();
+  checkUnpaidBalance();
+  document.getElementById('form-modal').classList.add('active');
 }
 
 // ---- 판매 기록 로드/렌더링 ----
@@ -202,26 +233,44 @@ function renderSalesRecords(records) {
     return;
   }
 
-  container.innerHTML = records.map(r => `
+  container.innerHTML = records.map(r => {
+    // 이전 버전(계산된 결과만 있는) 기록 호환성 유지
+    const isOldRecord = !r.kilosText && !r.addText && r.kilosTotal > 0;
+    
+    let detailHTML = '';
+    if (isOldRecord) {
+      detailHTML = `판매액: ${formatNumber(r.kilosTotal)}원
+        ${r.addTotal > 0 ? `<br>부대비용: ${formatNumber(r.addTotal)}원` : ''}
+        ${r.commissionRate > 0 ? `<br>수수료 ${r.commissionRate}% (-${formatNumber(r.commissionAmount)}원)` : ''}`;
+    } else {
+      detailHTML = `
+        <div style="font-size:0.8rem; color:#555; background:#f5f6f8; padding:8px; border-radius:6px; margin-bottom:6px;">
+          ${r.kilosText ? `<div>🐟 <b>입력:</b> ${escapeHtml(r.kilosText)} = ${formatNumber(r.kilosTotal)}원</div>` : ''}
+          ${r.addText ? `<div>📦 <b>부대비용:</b> ${escapeHtml(r.addText)} = ${formatNumber(r.addTotal)}원</div>` : ''}
+          ${r.commissionRate > 0 ? `<div>🧾 <b>수수료:</b> ${r.commissionRate}% = -${formatNumber(r.commissionAmount)}원</div>` : ''}
+        </div>
+      `;
+    }
+
+    return `
     <div class="record-item" id="sale-rec-${r.id}">
       <div class="record-header">
         <div class="record-company">${escapeHtml(r.companyName)}</div>
         <div class="record-date">${formatDate(r.date || r.createdAt)}</div>
       </div>
       <div class="record-body">
-        <div class="record-detail">
-          판매액: ${formatNumber(r.kilosTotal)}원
-          ${r.addTotal > 0 ? `<br>부대비용: ${formatNumber(r.addTotal)}원` : ''}
-          ${r.commissionRate > 0 ? `<br>수수료 ${r.commissionRate}% (-${formatNumber(r.commissionAmount)}원)` : ''}
+        <div class="record-detail" style="width: 100%;">
+          ${detailHTML}
         </div>
-        <div class="record-total">${formatNumber(r.total)}원</div>
+        <div class="record-total" style="text-align: right; width: 100%; margin-top: 4px;">총 ${formatNumber(r.total)}원</div>
       </div>
       ${r.memo ? `<div class="record-memo">📝 ${escapeHtml(r.memo)}</div>` : ''}
       <div class="record-actions">
+        <button class="btn-pay" style="padding: 4px 12px; font-size: 0.72rem; margin-right:4px;" onclick="editSaleRecord('${r.id}')">✏️ 편집</button>
         <button class="btn-delete" onclick="deleteSaleRecord('${r.id}')">🗑 삭제</button>
       </div>
     </div>
-  `).join('');
+  `}).join('');
 }
 
 function filterSalesRecords() {
