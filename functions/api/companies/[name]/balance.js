@@ -9,6 +9,10 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+function getDB(env) {
+  return env.sonzilkingdb || env.DB;
+}
+
 export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS });
 }
@@ -16,7 +20,8 @@ export async function onRequestOptions() {
 export async function onRequestGet({ env, params }) {
   const companyName = decodeURIComponent(params.name);
   try {
-    const result = await env.DB.prepare(`
+    const db = getDB(env);
+    const result = await db.prepare(`
       SELECT SUM(total) as balance 
       FROM sales 
       WHERE TRIM(LOWER(companyName)) = TRIM(LOWER(?)) AND unpaid = 1

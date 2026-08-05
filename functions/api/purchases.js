@@ -10,13 +10,18 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+function getDB(env) {
+  return env.sonzilkingdb || env.DB;
+}
+
 export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS });
 }
 
 export async function onRequestGet({ env }) {
   try {
-    const { results } = await env.DB.prepare(
+    const db = getDB(env);
+    const { results } = await db.prepare(
       "SELECT * FROM purchases ORDER BY date DESC, createdAt DESC"
     ).all();
 
@@ -31,11 +36,12 @@ export async function onRequestGet({ env }) {
 
 export async function onRequestPost({ env, request }) {
   try {
+    const db = getDB(env);
     const body = await request.json();
     const id = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const createdAt = new Date().toISOString();
 
-    await env.DB.prepare(`
+    await db.prepare(`
       INSERT INTO purchases (id, createdAt, companyName, date, kilos, unitPrice, total, memo)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(

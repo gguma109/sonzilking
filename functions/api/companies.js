@@ -9,13 +9,18 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+function getDB(env) {
+  return env.sonzilkingdb || env.DB;
+}
+
 export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS });
 }
 
 export async function onRequestGet({ env }) {
   try {
-    const { results } = await env.DB.prepare(`
+    const db = getDB(env);
+    const { results } = await db.prepare(`
       SELECT DISTINCT companyName FROM (
         SELECT companyName FROM sales
         UNION

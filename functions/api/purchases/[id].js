@@ -9,6 +9,10 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+function getDB(env) {
+  return env.sonzilkingdb || env.DB;
+}
+
 export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS });
 }
@@ -16,7 +20,8 @@ export async function onRequestOptions() {
 export async function onRequestDelete({ env, params }) {
   const id = params.id;
   try {
-    await env.DB.prepare("DELETE FROM purchases WHERE id = ?").bind(id).run();
+    const db = getDB(env);
+    await db.prepare("DELETE FROM purchases WHERE id = ?").bind(id).run();
     return Response.json({ success: true }, { headers: CORS });
   } catch (e) {
     return Response.json({ success: false, error: e.message }, { status: 500, headers: CORS });
