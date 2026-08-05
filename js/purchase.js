@@ -14,8 +14,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 모달 제어
   const modal = document.getElementById('form-modal');
-  document.getElementById('btn-open-modal').addEventListener('click', () => modal.classList.add('active'));
-  document.getElementById('btn-close-modal').addEventListener('click', () => modal.classList.remove('active'));
+  document.getElementById('btn-open-modal').addEventListener('click', () => {
+    resetPurchaseForm();
+    modal.classList.add('active');
+  });
+  document.getElementById('btn-close-modal').addEventListener('click', () => {
+    resetPurchaseForm();
+    modal.classList.remove('active');
+  });
   modal.addEventListener('click', (e) => {
     if (e.target === modal) modal.classList.remove('active');
   });

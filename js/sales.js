@@ -29,8 +29,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 모달 제어
   const modal = document.getElementById('form-modal');
-  document.getElementById('btn-open-modal').addEventListener('click', () => modal.classList.add('active'));
-  document.getElementById('btn-close-modal').addEventListener('click', () => modal.classList.remove('active'));
+  document.getElementById('btn-open-modal').addEventListener('click', () => {
+    resetSalesForm(); // 새 작성 시 폼 비우기
+    modal.classList.add('active');
+  });
+  document.getElementById('btn-close-modal').addEventListener('click', () => {
+    resetSalesForm();
+    modal.classList.remove('active');
+  });
   modal.addEventListener('click', (e) => {
     if (e.target === modal) modal.classList.remove('active');
   });
