@@ -42,7 +42,7 @@ body {
    MAIN PAGE
 =========================== */
 .main-body {
-  background: linear-gradient(145deg, #0a1628 0%, #1a3d7c 45%, #2856b4 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #f4f8fd 50%, #eef5fc 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -60,13 +60,13 @@ body {
 }
 .main-bg-circle.c1 {
   width: 500px; height: 500px;
-  background: radial-gradient(circle, rgba(74, 143, 217, 0.18) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(40, 86, 180, 0.08) 0%, transparent 70%);
   top: -100px; right: -100px;
   animation-delay: 0s;
 }
 .main-bg-circle.c2 {
   width: 400px; height: 400px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.06) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(40, 86, 180, 0.04) 0%, transparent 70%);
   bottom: -80px; left: -80px;
   animation-delay: 3s;
 }
@@ -98,18 +98,17 @@ body {
 .main-logo {
   width: 300px;
   max-width: 80vw;
-  filter: brightness(0) invert(1);
   animation: float 4s ease-in-out infinite;
   position: relative;
   z-index: 2;
-  drop-shadow: 0 0 40px rgba(255,255,255,0.3);
+  filter: drop-shadow(0 8px 24px rgba(40, 86, 180, 0.12));
 }
 
 .logo-glow {
   position: absolute;
   width: 340px;
   height: 340px;
-  background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 65%);
+  background: radial-gradient(circle, rgba(40, 86, 180, 0.05) 0%, transparent 65%);
   border-radius: 50%;
   animation: glow-pulse 3s ease-in-out infinite;
 }
@@ -138,32 +137,31 @@ body {
   align-items: center;
   gap: 6px;
   padding: 34px 20px 28px;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   text-decoration: none;
-  color: white;
+  color: var(--text-primary);
   transition: var(--transition);
   position: relative;
   overflow: hidden;
   cursor: pointer;
+  box-shadow: var(--shadow-sm);
 }
 
 .menu-card::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0));
+  background: linear-gradient(135deg, rgba(40, 86, 180, 0.03), rgba(40, 86, 180, 0));
   opacity: 0;
   transition: var(--transition);
 }
 
 .menu-card:hover {
   transform: translateY(-8px) scale(1.02);
-  box-shadow: 0 24px 64px rgba(0,0,0,0.35);
-  border-color: rgba(255,255,255,0.35);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary-light);
 }
 
 .menu-card:hover::before { opacity: 1; }
@@ -171,12 +169,13 @@ body {
 .menu-card:active { transform: translateY(-2px) scale(0.99); }
 
 .menu-icon { font-size: 2.8rem; margin-bottom: 4px; }
-.menu-title { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em; }
-.menu-subtitle { font-size: 0.72rem; opacity: 0.7; font-weight: 400; }
+.menu-title { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em; color: var(--primary); }
+.menu-subtitle { font-size: 0.72rem; color: var(--text-secondary); font-weight: 400; }
 .menu-arrow {
   margin-top: 10px;
   font-size: 0.9rem;
-  opacity: 0.45;
+  color: var(--primary);
+  opacity: 0.5;
   transition: var(--transition);
 }
 .menu-card:hover .menu-arrow {
@@ -185,9 +184,9 @@ body {
 }
 
 .footer-tagline {
-  color: rgba(255,255,255,0.42);
+  color: var(--text-secondary);
   font-size: 0.78rem;
-  font-weight: 300;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-align: center;
 }
@@ -230,7 +229,7 @@ body {
   transform: scale(1.08);
 }
 
-.header-logo { height: 32px; filter: brightness(0) invert(1); }
+.header-logo { height: 32px; }
 
 .page-title {
   font-size: 1.15rem;
