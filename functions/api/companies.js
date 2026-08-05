@@ -1,6 +1,6 @@
 // ===================================================
 // functions/api/companies.js
-// GET /api/companies  → 모든 업체명 목록 조회 (D1)
+// GET /api/companies  ??모든 ?�체�?목록 조회 (D1)
 // ===================================================
 
 const CORS = {
@@ -10,7 +10,7 @@ const CORS = {
 };
 
 function getDB(env) {
-  return env.sonzilkingdb || env.DB;
+  return env.sonzil || env.sonzilkingdb || env.DB;
 }
 
 export async function onRequestOptions() {

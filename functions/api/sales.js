@@ -1,7 +1,7 @@
 // ===================================================
 // functions/api/sales.js
-// GET  /api/sales  → 판매 기록 전체 조회 (D1)
-// POST /api/sales  → 판매 기록 저장 (D1)
+// GET  /api/sales  ???�매 기록 ?�체 조회 (D1)
+// POST /api/sales  ???�매 기록 ?�??(D1)
 // ===================================================
 
 const CORS = {
@@ -11,7 +11,7 @@ const CORS = {
 };
 
 function getDB(env) {
-  return env.sonzilkingdb || env.DB;
+  return env.sonzil || env.sonzilkingdb || env.DB;
 }
 
 export async function onRequestOptions() {
@@ -25,8 +25,7 @@ export async function onRequestGet({ env }) {
       "SELECT * FROM sales ORDER BY date DESC, createdAt DESC"
     ).all();
 
-    // D1에서는 boolean이 1 또는 0으로 저장되므로 JS boolean으로 가공
-    const data = results.map(r => ({
+    // D1?�서??boolean??1 ?�는 0?�로 ?�?�되므�?JS boolean?�로 가�?    const data = results.map(r => ({
       ...r,
       unpaid: r.unpaid === 1
     }));
