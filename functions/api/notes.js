@@ -1,4 +1,3 @@
-// functions/api/notes.js
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -16,8 +15,7 @@ export async function onRequestOptions() {
 export async function onRequestGet({ env, data }) {
   try {
     const db = getDB(env);
-    const { results } = await db.prepare(`SELECT * FROM notes WHERE userId = ? ORDER BY createdAt DESC').bind(data.userId).all();
-    //`).all();
+    const { results } = await db.prepare("SELECT * FROM notes WHERE userId = ? ORDER BY createdAt DESC").bind(data.userId).all();
     return Response.json({ success: true, data: results }, { headers: CORS });
   } catch (e) {
     return Response.json({ success: false, error: e.message }, { status: 500, headers: CORS });
@@ -26,16 +24,16 @@ export async function onRequestGet({ env, data }) {
 
 export async function onRequestPost({ request, env, data }) {
   try {
-    const data = await request.json();
+    const body = await request.json();
     const db = getDB(env);
     const id = crypto.randomUUID();
     const createdAt = new Date().toISOString();
 
-    await db.prepare(`INSERT INTO notes (id, userId, createdAt, content) VALUES (?, ?, ?)`)
-      .bind(id, data.userId, createdAt, data.content)
+    await db.prepare('INSERT INTO notes (id, userId, createdAt, content) VALUES (?, ?, ?, ?)')
+      .bind(id, data.userId, createdAt, body.content)
       .run();
 
-    return Response.json({ success: true, id, createdAt }, { headers: CORS });
+    return Response.json({ success: true, id }, { headers: CORS });
   } catch (e) {
     return Response.json({ success: false, error: e.message }, { status: 500, headers: CORS });
   }

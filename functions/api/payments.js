@@ -38,12 +38,12 @@ export async function onRequestGet({ env, request, data }) {
 
 export async function onRequestPost({ request, env, data }) {
   try {
-    const data = await request.json();
+    const body = await request.json();
     const db = getDB(env);
     const id = crypto.randomUUID();
     const createdAt = new Date().toISOString();
-    await db.prepare(`INSERT INTO payments (id, userId, createdAt, companyName, amount, memo) VALUES (?, ?, ?, ?, ?)`)
-      .bind(id, data.userId, createdAt, data.companyName, data.amount, data.memo || '')
+    await db.prepare(`INSERT INTO payments (id, userId, createdAt, companyName, amount, memo) VALUES (?, ?, ?, ?, ?, ?)`)
+      .bind(id, data.userId, createdAt, body.companyName, body.amount, body.memo || '')
       .run();
 
     return Response.json({ success: true, id, createdAt }, { headers: CORS });

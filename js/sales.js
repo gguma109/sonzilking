@@ -284,12 +284,27 @@ function renderSalesRecords(records) {
       </div>
       ${r.memo ? `<div class="record-memo">📝 ${escapeHtml(r.memo)}</div>` : ''}
       <div class="record-actions">
+        <button class="btn-pay" style="padding: 4px 12px; font-size: 0.72rem; margin-right:4px;" onclick="copySaleRecord('${r.id}')">📋 복사</button>
         <button class="btn-pay" style="padding: 4px 12px; font-size: 0.72rem; margin-right:4px;" onclick="editSaleRecord('${r.id}')">✏️ 편집</button>
         <button class="btn-delete" onclick="deleteSaleRecord('${r.id}')">🗑 삭제</button>
       </div>
     </div>
   `}).join('');
 }
+
+window.copySaleRecord = function(id) {
+  const r = allSalesRecords.find(x => x.id === id);
+  if (!r) return;
+  
+  let text = `[${r.companyName}] ${formatDate(r.date || r.createdAt)}\n`;
+  if (r.kilosText) text += `🐟 판매: ${r.kilosText} = ${formatNumber(r.kilosTotal)}원\n`;
+  if (r.addText) text += `📦 부대비용: ${r.addText} = ${formatNumber(r.addTotal)}원\n`;
+  if (r.commissionRate > 0) text += `🧾 수수료: ${r.commissionRate}% = ${formatNumber(r.commissionAmount)}원\n`;
+  text += `총 합계: ${formatNumber(r.total)}원\n`;
+  if (r.memo) text += `📝 메모: ${r.memo}`;
+  
+  copyTextToClipboard(text.trim());
+};
 
 function filterSalesRecords() {
   const q = document.getElementById('records-search').value.trim().toLowerCase();

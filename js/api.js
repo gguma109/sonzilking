@@ -121,3 +121,14 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+async function copyTextToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('✅ 텍스트가 복사되었습니다.');
+  } catch(e) {
+    showToast('❌ 복사 실패: 지원하지 않는 기기입니다.', 'error');
+  }
+}
+
+window.copyTextToClipboard = copyTextToClipboard;

@@ -47,12 +47,20 @@ function renderNotes(notes) {
     <div class="note-item" id="note-${n.id}">
       <div class="note-header">
         <div class="note-date">${formatDate(n.createdAt)}</div>
-        <button class="btn-close-modal" style="font-size: 1rem;" onclick="deleteNote('${n.id}')">🗑</button>
+        <div>
+          <button class="btn-pay" style="padding: 4px 8px; font-size: 0.75rem; margin-right:4px;" onclick="copyNoteContent('${n.id}')">📋 복사</button>
+          <button class="btn-close-modal" style="font-size: 1rem;" onclick="deleteNote('${n.id}')">🗑</button>
+        </div>
       </div>
-      <div class="note-content">${escapeHtml(n.content)}</div>
+      <div class="note-content" id="note-content-text-${n.id}">${escapeHtml(n.content)}</div>
     </div>
   `).join('');
 }
+
+window.copyNoteContent = function(id) {
+  const text = document.getElementById('note-content-text-' + id).innerText;
+  copyTextToClipboard(text);
+};
 
 async function saveNote() {
   const input = document.getElementById('note-input');
