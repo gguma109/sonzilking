@@ -1,7 +1,7 @@
 // ===================================================
 // functions/api/purchases.js
-// GET  /api/purchases  ???�매 기록 ?�체 조회 (D1)
-// POST /api/purchases  ???�매 기록 ?�??(D1)
+// GET  /api/purchases  → 수매 기록 전체 조회 (D1)
+// POST /api/purchases  → 수매 기록 저장 (D1)
 // ===================================================
 
 const CORS = {
@@ -11,7 +11,7 @@ const CORS = {
 };
 
 function getDB(env) {
-  return env.sonzil || env.sonzilkingdb || env.DB;
+  return env.sonzilkingdb || env.DB;
 }
 
 export async function onRequestOptions() {
