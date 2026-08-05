@@ -1,27 +1,30 @@
 // ===================================================
-// sales.js - 판매 페이지 로직
+// sales.js - 판매 페이지 로직 (판매/미수금 탭)
 // ===================================================
 
 let allSalesRecords = [];
+let allUnpaidRecords = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // 오늘 날짜 기본값
+  // 기본 날짜
   document.getElementById('sale-date').value = getTodayDate();
 
-  // 계산 이벤트
-  ['kilos', 'unit-price', 'add-qty', 'add-price', 'commission-rate'].forEach(id => {
+  // 계산기 텍스트 에어리어 이벤트
+  ['calc-kilos', 'calc-add', 'commission-rate'].forEach(id => {
     document.getElementById(id).addEventListener('input', calculateSales);
   });
 
-  // 업체명 입력 시 미수금 조회
+  // 미수금 실시간 체크용 (모달 내)
   let debounceTimer;
   document.getElementById('company-name').addEventListener('input', () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(checkUnpaidBalance, 600);
   });
 
-  // 저장 버튼
+  // 버튼들
   document.getElementById('btn-save-sales').addEventListener('click', saveSale);
+  document.getElementById('records-search').addEventListener('input', filterSalesRecords);
+  document.getElementById('records-search-unpaid').addEventListener('input', filterUnpaidRecords);
 
   // 모달 제어
   const modal = document.getElementById('form-modal');
@@ -31,37 +34,46 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (e.target === modal) modal.classList.remove('active');
   });
 
-  // 검색
-  document.getElementById('records-search').addEventListener('input', filterSalesRecords);
-
   // 초기 데이터 로드
   await loadCompanies();
   await loadSalesRecords();
+  await loadUnpaidRecords();
 });
 
-// ---- 계산 ----
+// ---- 계산 (텍스트 파서 적용) ----
 function calculateSales() {
-  const kilos = parseFloat(document.getElementById('kilos').value) || 0;
-  const unitPrice = parseFloat(document.getElementById('unit-price').value) || 0;
-  const addQty = parseFloat(document.getElementById('add-qty').value) || 0;
-  const addPrice = parseFloat(document.getElementById('add-price').value) || 0;
+  const kilosText = document.getElementById('calc-kilos').value;
+  const addText = document.getElementById('calc-add').value;
   const commissionRate = parseFloat(document.getElementById('commission-rate').value) || 0;
 
-  const kilosTotal = kilos * unitPrice;
-  const addTotal = addQty * addPrice;
+  const kilosTotal = parseAndCalculateMath(kilosText);
+  const addTotal = parseAndCalculateMath(addText);
+  
   const subtotal = kilosTotal + addTotal;
   const commissionAmount = subtotal * (commissionRate / 100);
   const grandTotal = subtotal - commissionAmount;
 
-  document.getElementById('kilos-total').textContent = formatNumber(kilosTotal) + '원';
-  document.getElementById('add-total').textContent = formatNumber(addTotal) + '원';
+  document.getElementById('preview-kilos').textContent = formatNumber(kilosTotal) + '원';
+  document.getElementById('preview-add').textContent = formatNumber(addTotal) + '원';
   document.getElementById('commission-amount').textContent = formatNumber(commissionAmount) + '원';
   document.getElementById('grand-total').textContent = formatNumber(grandTotal);
 
-  return { kilos, unitPrice, kilosTotal, addQty, addPrice, addTotal, commissionRate, commissionAmount, grandTotal };
+  // 과거 API 호환을 위해 텍스트 수식 자체도 kilos 등에 남기거나 1로 처리
+  // DB 스키마가 키로수 단가를 나눠받으므로, 텍스트 계산기 사용 시 kilos=1, unitPrice=kilosTotal 로 대체 저장
+  return { 
+    kilos: 1, 
+    unitPrice: kilosTotal, 
+    kilosTotal, 
+    addQty: 1, 
+    addPrice: addTotal, 
+    addTotal, 
+    commissionRate, 
+    commissionAmount, 
+    grandTotal 
+  };
 }
 
-// ---- 미수금 조회 ----
+// ---- 미수금 조회 (모달 폼 내) ----
 async function checkUnpaidBalance() {
   const company = document.getElementById('company-name').value.trim();
   const alertEl = document.getElementById('alert-unpaid');
@@ -71,17 +83,11 @@ async function checkUnpaidBalance() {
     return;
   }
 
-  try {
-    const data = await API.get(`companies/${encodeURIComponent(company)}/balance`);
-    const balance = data.balance || 0;
-
-    if (balance > 0) {
-      document.getElementById('unpaid-amount-display').textContent = formatNumber(balance) + '원';
-      alertEl.style.display = 'flex';
-    } else {
-      alertEl.style.display = 'none';
-    }
-  } catch {
+  const found = allUnpaidRecords.find(r => r.companyName === company);
+  if (found && found.balance > 0) {
+    document.getElementById('unpaid-amount-display').textContent = formatNumber(found.balance) + '원';
+    alertEl.style.display = 'flex';
+  } else {
     alertEl.style.display = 'none';
   }
 }
@@ -92,7 +98,6 @@ async function loadCompanies() {
     const data = await API.get('companies');
     const companies = data.companies || [];
     
-    // Datalist 업데이트
     const datalist = document.getElementById('company-datalist');
     datalist.innerHTML = '';
     companies.forEach(name => {
@@ -101,7 +106,6 @@ async function loadCompanies() {
       datalist.appendChild(opt);
     });
 
-    // 칩 (버튼) 업데이트
     const chipsContainer = document.getElementById('company-chips');
     if (chipsContainer) {
       chipsContainer.innerHTML = '';
@@ -111,14 +115,12 @@ async function loadCompanies() {
         chip.textContent = name;
         chip.onclick = () => {
           document.getElementById('company-name').value = name;
-          checkUnpaidBalance(); // 미수금 조회 실행
+          checkUnpaidBalance();
         };
         chipsContainer.appendChild(chip);
       });
     }
-  } catch {
-    // 업체 목록 로드 실패 시 무시
-  }
+  } catch {}
 }
 
 // ---- 저장 ----
@@ -146,7 +148,7 @@ async function saveSale() {
     commissionRate: values.commissionRate,
     commissionAmount: values.commissionAmount,
     total: values.grandTotal,
-    unpaid: true,
+    unpaid: 1, // 장부 기록을 위해 기본적으로 미수금에 합산되게 설정
     memo: document.getElementById('sale-memo').value.trim()
   };
 
@@ -159,6 +161,7 @@ async function saveSale() {
     resetSalesForm();
     await loadCompanies();
     await loadSalesRecords();
+    await loadUnpaidRecords();
   } catch (e) {
     showToast('❌ 저장 실패: ' + e.message, 'error');
   } finally {
@@ -168,114 +171,149 @@ async function saveSale() {
 }
 
 function resetSalesForm() {
-  ['company-name', 'kilos', 'unit-price', 'add-qty', 'add-price', 'commission-rate', 'sale-memo'].forEach(id => {
+  ['company-name', 'calc-kilos', 'calc-add', 'commission-rate', 'sale-memo'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.getElementById('sale-date').value = getTodayDate();
   document.getElementById('alert-unpaid').style.display = 'none';
   calculateSales();
-  
-  // 성공 후 폼 닫기
   document.getElementById('form-modal').classList.remove('active');
 }
 
-// ---- 기록 로드 ----
+// ---- 판매 기록 로드/렌더링 ----
 async function loadSalesRecords() {
   const container = document.getElementById('records-list');
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-
   try {
     const data = await API.get('sales');
     allSalesRecords = data.data || [];
     renderSalesRecords(allSalesRecords);
   } catch {
-    container.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">📭</div>
-        <div class="empty-text">기록을 불러올 수 없습니다</div>
-      </div>`;
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">기록을 불러올 수 없습니다</div></div>`;
   }
 }
 
-// ---- 기록 렌더링 ----
 function renderSalesRecords(records) {
   const container = document.getElementById('records-list');
-  const countEl = document.getElementById('records-count');
-  countEl.textContent = `${records.length}건`;
+  document.getElementById('records-count').textContent = `${records.length}건`;
 
   if (!records.length) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">📭</div>
-        <div class="empty-text">저장된 판매 기록이 없습니다</div>
-      </div>`;
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">저장된 판매 기록이 없습니다</div></div>`;
     return;
   }
 
-  container.innerHTML = records.map(r => {
-    const isUnpaid = r.unpaid !== false;
-    const statusBadge = isUnpaid
-      ? `<span class="status-badge unpaid" style="background: var(--danger); color: white; padding: 2px 8px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; margin-left: 8px;">미수</span>`
-      : `<span class="status-badge paid" style="background: var(--success); color: white; padding: 2px 8px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; margin-left: 8px;">완납</span>`;
-
-    return `
-      <div class="record-item" id="sale-rec-${r.id}">
-        <div class="record-header">
-          <div class="record-company">
-            ${escapeHtml(r.companyName)}
-            ${statusBadge}
-          </div>
-          <div class="record-date">${formatDate(r.date || r.createdAt)}</div>
-        </div>
-        <div class="record-body">
-          <div class="record-detail">
-            ${r.kilos}kg × ${formatNumber(r.unitPrice)}원
-            ${r.addTotal > 0 ? `<br>부대비용 ${formatNumber(r.addTotal)}원` : ''}
-            ${r.commissionRate > 0 ? `<br>수수료 ${r.commissionRate}% (${formatNumber(r.commissionAmount)}원)` : ''}
-          </div>
-          <div class="record-total">${formatNumber(r.total)}원</div>
-        </div>
-        ${r.memo ? `<div class="record-memo">📝 ${escapeHtml(r.memo)}</div>` : ''}
-        <div class="record-actions">
-          ${isUnpaid ? `<button class="btn-pay" style="padding: 4px 12px; background: transparent; border: 1.5px solid var(--success); color: var(--success); border-radius: var(--radius-xs); font-size: 0.72rem; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; transition: var(--transition);" onclick="markAsPaid('${r.id}')">💵 수납 완료</button>` : ''}
-          <button class="btn-delete" onclick="deleteSaleRecord('${r.id}')">🗑 삭제</button>
-        </div>
+  container.innerHTML = records.map(r => `
+    <div class="record-item" id="sale-rec-${r.id}">
+      <div class="record-header">
+        <div class="record-company">${escapeHtml(r.companyName)}</div>
+        <div class="record-date">${formatDate(r.date || r.createdAt)}</div>
       </div>
-    `;
-  }).join('');
+      <div class="record-body">
+        <div class="record-detail">
+          판매액: ${formatNumber(r.kilosTotal)}원
+          ${r.addTotal > 0 ? `<br>부대비용: ${formatNumber(r.addTotal)}원` : ''}
+          ${r.commissionRate > 0 ? `<br>수수료 ${r.commissionRate}% (-${formatNumber(r.commissionAmount)}원)` : ''}
+        </div>
+        <div class="record-total">${formatNumber(r.total)}원</div>
+      </div>
+      ${r.memo ? `<div class="record-memo">📝 ${escapeHtml(r.memo)}</div>` : ''}
+      <div class="record-actions">
+        <button class="btn-delete" onclick="deleteSaleRecord('${r.id}')">🗑 삭제</button>
+      </div>
+    </div>
+  `).join('');
 }
 
-// ---- 검색 ----
 function filterSalesRecords() {
   const q = document.getElementById('records-search').value.trim().toLowerCase();
-  const filtered = q
-    ? allSalesRecords.filter(r => r.companyName.toLowerCase().includes(q))
-    : allSalesRecords;
+  const filtered = q ? allSalesRecords.filter(r => r.companyName.toLowerCase().includes(q)) : allSalesRecords;
   renderSalesRecords(filtered);
 }
 
-// ---- 삭제 ----
 async function deleteSaleRecord(id) {
-  if (!confirm('이 판매 기록을 삭제하시겠습니까?')) return;
+  if (!confirm('이 판매 기록을 삭제하시겠습니까?\n(미수금 원장에도 즉시 반영됩니다)')) return;
   try {
     await API.del('sales', id);
     showToast('🗑 기록이 삭제되었습니다');
     await loadSalesRecords();
-    await checkUnpaidBalance();
+    await loadUnpaidRecords();
   } catch (e) {
     showToast('❌ 삭제 실패: ' + e.message, 'error');
   }
 }
 
-// ---- 수납 완료 ----
-async function markAsPaid(id) {
-  if (!confirm('이 판매 건의 수납을 완료 처리하시겠습니까?')) return;
+
+// ==========================================
+// 미수금 탭 로직 (수납 처리 기능 포함)
+// ==========================================
+async function loadUnpaidRecords() {
+  const container = document.getElementById('records-list-unpaid');
+  if(!container) return;
+  container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   try {
-    await API.put(`sales/${id}`, { unpaid: false });
-    showToast('💵 수납 완료 처리되었습니다');
-    await loadSalesRecords();
-    await checkUnpaidBalance();
+    const data = await API.get('unpaid');
+    allUnpaidRecords = data.data || [];
+    renderUnpaidRecords(allUnpaidRecords);
+  } catch {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">현황을 불러올 수 없습니다</div></div>`;
+  }
+}
+
+function renderUnpaidRecords(records) {
+  const container = document.getElementById('records-list-unpaid');
+  document.getElementById('records-count-unpaid').textContent = `${records.length}곳`;
+
+  const grandTotal = records.reduce((sum, r) => sum + r.balance, 0);
+  document.getElementById('total-unpaid-amount').textContent = formatNumber(grandTotal);
+
+  if (!records.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">🎉</div><div class="empty-text">현재 남은 미수금이 없습니다!</div></div>`;
+    return;
+  }
+
+  container.innerHTML = records.map(r => {
+    const safeName = escapeHtml(r.companyName);
+    return `
+    <div class="record-item" style="border-left: 4px solid var(--danger);">
+      <div class="record-header">
+        <div class="record-company">${safeName}</div>
+        <div class="record-total" style="color: var(--danger); font-size: 1.2rem;">${formatNumber(r.balance)}원</div>
+      </div>
+      
+      <!-- 수납 입력 폼 -->
+      <div style="margin-top: 12px; background: #f8f9fa; padding: 12px; border-radius: 8px;">
+        <div style="font-size: 0.8rem; color: #666; margin-bottom: 6px;">💵 부분 수납 입력</div>
+        <div style="display: flex; gap: 8px;">
+          <input type="number" id="pay-amt-${safeName}" class="form-control" style="padding: 6px 10px;" placeholder="입금액 (원)">
+          <button class="btn-save" style="width: auto; padding: 6px 12px;" onclick="submitPayment('${safeName}')">수납</button>
+        </div>
+      </div>
+    </div>
+  `}).join('');
+}
+
+function filterUnpaidRecords() {
+  const q = document.getElementById('records-search-unpaid').value.trim().toLowerCase();
+  const filtered = q ? allUnpaidRecords.filter(r => r.companyName.toLowerCase().includes(q)) : allUnpaidRecords;
+  renderUnpaidRecords(filtered);
+}
+
+async function submitPayment(companyName) {
+  const input = document.getElementById(`pay-amt-${companyName}`);
+  const amount = parseFloat(input.value);
+
+  if (!amount || amount <= 0) {
+    showToast('❗ 정확한 수납(입금) 금액을 입력해주세요.', 'error');
+    return;
+  }
+
+  if (!confirm(`[${companyName}] 업체로부터 ${formatNumber(amount)}원을 수납(입금) 처리하시겠습니까?`)) return;
+
+  try {
+    await API.post('payments', { companyName, amount, memo: '부분수납' });
+    showToast('💵 수납이 정상적으로 기록되었습니다.');
+    await loadUnpaidRecords(); // 뷰 리로드
   } catch (e) {
-    showToast('❌ 처리 실패: ' + e.message, 'error');
+    showToast('❌ 수납 처리 실패: ' + e.message, 'error');
   }
 }

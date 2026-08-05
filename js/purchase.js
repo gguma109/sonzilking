@@ -7,10 +7,7 @@ let allPurchaseRecords = [];
 document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('purchase-date').value = getTodayDate();
 
-  ['kilos-pur', 'unit-price-pur'].forEach(id => {
-    document.getElementById(id).addEventListener('input', calculatePurchase);
-  });
-
+  document.getElementById('calc-kilos-pur').addEventListener('input', calculatePurchase);
   document.getElementById('btn-save-purchase').addEventListener('click', savePurchase);
   document.getElementById('records-search-pur').addEventListener('input', filterPurchaseRecords);
 
@@ -28,14 +25,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ---- 계산 ----
 function calculatePurchase() {
-  const kilos = parseFloat(document.getElementById('kilos-pur').value) || 0;
-  const unitPrice = parseFloat(document.getElementById('unit-price-pur').value) || 0;
-  const total = kilos * unitPrice;
+  const kilosText = document.getElementById('calc-kilos-pur').value;
+  const total = parseAndCalculateMath(kilosText);
 
-  document.getElementById('kilos-total-pur').textContent = formatNumber(total) + '원';
+  document.getElementById('preview-kilos-pur').textContent = formatNumber(total) + '원';
   document.getElementById('grand-total-pur').textContent = formatNumber(total);
 
-  return { kilos, unitPrice, total };
+  return { kilos: 1, unitPrice: total, total }; // API 호환
 }
 
 // ---- 업체명 자동완성 및 칩 ----
@@ -44,7 +40,6 @@ async function loadCompanies() {
     const data = await API.get('companies');
     const companies = data.companies || [];
 
-    // Datalist 업데이트
     const datalist = document.getElementById('company-datalist-pur');
     datalist.innerHTML = '';
     companies.forEach(name => {
@@ -53,7 +48,6 @@ async function loadCompanies() {
       datalist.appendChild(opt);
     });
 
-    // 칩 (버튼) 업데이트
     const chipsContainer = document.getElementById('company-chips-pur');
     if (chipsContainer) {
       chipsContainer.innerHTML = '';
@@ -67,9 +61,7 @@ async function loadCompanies() {
         chipsContainer.appendChild(chip);
       });
     }
-  } catch {
-    // 무시
-  }
+  } catch {}
 }
 
 // ---- 저장 ----
@@ -112,13 +104,12 @@ async function savePurchase() {
 }
 
 function resetPurchaseForm() {
-  ['company-name-pur', 'kilos-pur', 'unit-price-pur', 'purchase-memo'].forEach(id => {
-    document.getElementById(id).value = '';
+  ['company-name-pur', 'calc-kilos-pur', 'purchase-memo'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.value = '';
   });
   document.getElementById('purchase-date').value = getTodayDate();
   calculatePurchase();
-  
-  // 성공 후 폼 닫기
   document.getElementById('form-modal').classList.remove('active');
 }
 
@@ -132,26 +123,17 @@ async function loadPurchaseRecords() {
     allPurchaseRecords = data.data || [];
     renderPurchaseRecords(allPurchaseRecords);
   } catch {
-    container.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">📭</div>
-        <div class="empty-text">기록을 불러올 수 없습니다</div>
-      </div>`;
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">기록을 불러올 수 없습니다</div></div>`;
   }
 }
 
 // ---- 기록 렌더링 ----
 function renderPurchaseRecords(records) {
   const container = document.getElementById('records-list-pur');
-  const countEl = document.getElementById('records-count-pur');
-  countEl.textContent = `${records.length}건`;
+  document.getElementById('records-count-pur').textContent = `${records.length}건`;
 
   if (!records.length) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">📭</div>
-        <div class="empty-text">저장된 수매 기록이 없습니다</div>
-      </div>`;
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">저장된 수매 기록이 없습니다</div></div>`;
     return;
   }
 
@@ -162,7 +144,7 @@ function renderPurchaseRecords(records) {
         <div class="record-date">${formatDate(r.date || r.createdAt)}</div>
       </div>
       <div class="record-body">
-        <div class="record-detail">${r.kilos}kg × ${formatNumber(r.unitPrice)}원</div>
+        <div class="record-detail">수매액: ${formatNumber(r.total)}원</div>
         <div class="record-total">${formatNumber(r.total)}원</div>
       </div>
       ${r.memo ? `<div class="record-memo">📝 ${escapeHtml(r.memo)}</div>` : ''}
@@ -176,9 +158,7 @@ function renderPurchaseRecords(records) {
 // ---- 검색 ----
 function filterPurchaseRecords() {
   const q = document.getElementById('records-search-pur').value.trim().toLowerCase();
-  const filtered = q
-    ? allPurchaseRecords.filter(r => r.companyName.toLowerCase().includes(q))
-    : allPurchaseRecords;
+  const filtered = q ? allPurchaseRecords.filter(r => r.companyName.toLowerCase().includes(q)) : allPurchaseRecords;
   renderPurchaseRecords(filtered);
 }
 
@@ -193,3 +173,4 @@ async function deletePurchaseRecord(id) {
     showToast('❌ 삭제 실패: ' + e.message, 'error');
   }
 }
+

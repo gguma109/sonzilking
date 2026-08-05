@@ -20,11 +20,14 @@ export async function onRequestOptions() {
 export async function onRequestGet({ env }) {
   try {
     const db = getDB(env);
-    // unpaid = 1 (미수 상태)인 건들의 total을 업체별로 합산
+    // 진짜 회계 장부식 계산: (판매 총액) - (수금 총액)
     const { results } = await db.prepare(`
-      SELECT companyName, SUM(total) as balance 
-      FROM sales 
-      WHERE unpaid = 1 
+      SELECT companyName, SUM(balance) as balance 
+      FROM (
+        SELECT companyName, total as balance FROM sales
+        UNION ALL
+        SELECT companyName, -amount as balance FROM payments
+      )
       GROUP BY companyName 
       HAVING balance > 0
       ORDER BY balance DESC, companyName ASC

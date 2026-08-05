@@ -20,121 +20,148 @@
   </header>
 
   <main class="page-body">
-
-    <!-- ===== 미수금 ALERT ===== -->
-    <div class="alert-unpaid" id="alert-unpaid" style="display:none" role="alert">
-      <div class="alert-icon">⚠️</div>
-      <div>
-        <div class="alert-label">미수금 있음</div>
-        <div class="alert-amount" id="unpaid-amount-display">0원</div>
-      </div>
+    <!-- ===== TABS ===== -->
+    <div class="nav-tabs">
+      <div class="nav-item active" data-tab="tab-sales">💰 판매</div>
+      <div class="nav-item" data-tab="tab-unpaid">🧾 미수금</div>
+      <div class="nav-item" data-tab="tab-notes">📝 메모장</div>
     </div>
 
-    <!-- ===== 모달 오버레이 (판매 입력 폼) ===== -->
-    <div class="modal-overlay" id="form-modal">
-      <div class="form-card modal-content">
-        <div class="modal-header">
-          <div class="section-title">📝 판매 입력</div>
-          <button class="btn-close-modal" id="btn-close-modal">✖</button>
-        </div>
-
-      <!-- 업체명 -->
-      <div class="form-group">
-        <label class="form-label" for="company-name">업체명</label>
-        <input
-          type="text"
-          id="company-name"
-          class="form-control"
-          placeholder="업체명을 입력하세요"
-          autocomplete="off"
-          list="company-datalist"
-        >
-        <datalist id="company-datalist"></datalist>
-        <div class="company-chips" id="company-chips"></div>
-      </div>
-
-      <!-- 키로수 × 단가 -->
-      <div class="calc-card" id="kilos-card">
-        <div class="calc-card-label">키로수 × 단가</div>
-        <div class="calc-row">
-          <input type="number" id="kilos" class="calc-input" placeholder="0.0" step="0.1" min="0" aria-label="키로수">
-          <span class="calc-op">×</span>
-          <input type="number" id="unit-price" class="calc-input" placeholder="0" min="0" aria-label="단가">
-          <span class="calc-op">=</span>
-          <div class="calc-result" id="kilos-total" aria-live="polite">0원</div>
+    <!-- =========================
+         TAB 1: 판매 관리
+    ========================= -->
+    <div id="tab-sales" class="tab-pane active">
+      <!-- 미수금 ALERT -->
+      <div class="alert-unpaid" id="alert-unpaid" style="display:none" role="alert">
+        <div class="alert-icon">⚠️</div>
+        <div>
+          <div class="alert-label">미수금 있음</div>
+          <div class="alert-amount" id="unpaid-amount-display">0원</div>
         </div>
       </div>
 
-      <!-- 부대비용 -->
-      <div class="calc-card" id="additional-card">
-        <div class="calc-card-label">부대비용</div>
-        <div class="calc-row">
-          <input type="number" id="add-qty" class="calc-input" placeholder="0" min="0" aria-label="부대비용 수량">
-          <span class="calc-op">×</span>
-          <input type="number" id="add-price" class="calc-input" placeholder="0" min="0" aria-label="부대비용 단가">
-          <span class="calc-op">=</span>
-          <div class="calc-result" id="add-total" aria-live="polite">0원</div>
+      <!-- 모달 오버레이 (판매 입력 폼) -->
+      <div class="modal-overlay" id="form-modal">
+        <div class="form-card modal-content">
+          <div class="modal-header">
+            <div class="section-title">📝 판매 입력</div>
+            <button class="btn-close-modal" id="btn-close-modal">✖</button>
+          </div>
+
+          <!-- 업체명 -->
+          <div class="form-group">
+            <label class="form-label" for="company-name">업체명</label>
+            <input type="text" id="company-name" class="form-control" placeholder="업체명을 입력하세요" autocomplete="off" list="company-datalist">
+            <datalist id="company-datalist"></datalist>
+            <div class="company-chips" id="company-chips"></div>
+          </div>
+
+          <!-- 키로수 단가 계산기 -->
+          <div class="form-group">
+            <label class="form-label" for="calc-kilos">키로수 단가 계산기 (숫자와 기호만 자동 계산)</label>
+            <textarea id="calc-kilos" class="calc-textarea" placeholder="예) 광어 10 * 15000 + 우럭 5 * 10000"></textarea>
+            <div class="calc-preview" id="preview-kilos">0원</div>
+          </div>
+
+          <!-- 부대비용 계산기 -->
+          <div class="form-group">
+            <label class="form-label" for="calc-add">부대비용 계산기</label>
+            <textarea id="calc-add" class="calc-textarea" placeholder="예) 박스 2 * 3000 + 얼음 5000"></textarea>
+            <div class="calc-preview" id="preview-add">0원</div>
+          </div>
+
+          <!-- 수수료 -->
+          <div class="calc-card commission-card" id="commission-card">
+            <div class="calc-card-label">수수료 (총합계의 % - 선택)</div>
+            <div class="calc-row">
+              <input type="number" id="commission-rate" class="calc-input commission-input" placeholder="0" step="0.1" min="0" max="100" aria-label="수수료 퍼센트">
+              <span class="calc-op">%</span>
+              <span class="calc-op">=</span>
+              <div class="calc-result commission-result" id="commission-amount" aria-live="polite">0원</div>
+            </div>
+          </div>
+
+          <!-- 총합계 -->
+          <div class="total-card" aria-label="총합계">
+            <div class="total-label">총 합계 금액</div>
+            <div class="total-right">
+              <span class="total-amount" id="grand-total" aria-live="polite">0</span>
+              <span class="total-unit">원</span>
+            </div>
+          </div>
+
+          <!-- 날짜 & 메모 -->
+          <div class="form-group">
+            <label class="form-label" for="sale-date">날짜</label>
+            <input type="date" id="sale-date" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="sale-memo">메모</label>
+            <input type="text" id="sale-memo" class="form-control" placeholder="메모 (선택사항)">
+          </div>
+
+          <button type="button" class="btn-save" id="btn-save-sales">💾 저장하기</button>
+        </div> <!-- /.modal-content -->
+      </div> <!-- /.modal-overlay -->
+
+      <!-- 판매 기록 -->
+      <div class="records-card">
+        <div class="records-header">
+          <div class="records-title">📋 판매</div>
+          <div class="records-count" id="records-count">0건</div>
+        </div>
+        <input type="text" class="records-search" id="records-search" placeholder="🔍 업체명으로 검색...">
+        <div id="records-list">
+          <div class="loading"><div class="spinner"></div></div>
         </div>
       </div>
 
-      <!-- 수수료 -->
-      <div class="calc-card commission-card" id="commission-card">
-        <div class="calc-card-label">수수료 (총합계의 %)</div>
-        <div class="calc-row">
-          <input type="number" id="commission-rate" class="calc-input commission-input" placeholder="0" step="0.1" min="0" max="100" aria-label="수수료 퍼센트">
-          <span class="calc-op">%</span>
-          <span class="calc-op">=</span>
-          <div class="calc-result commission-result" id="commission-amount" aria-live="polite">0원</div>
-        </div>
-      </div>
+      <!-- 플로팅 작성 버튼 -->
+      <button class="fab-btn" id="btn-open-modal" aria-label="판매 기록 추가">➕</button>
+    </div> <!-- /#tab-sales -->
 
-      <!-- 총합계 -->
-      <div class="total-card" aria-label="총합계">
-        <div class="total-label">총 합계</div>
+    <!-- =========================
+         TAB 2: 미수금 현황
+    ========================= -->
+    <div id="tab-unpaid" class="tab-pane">
+      <div class="total-card" style="background: linear-gradient(135deg, #c0392b, #e74c3c); margin-bottom: 24px;">
+        <div class="total-label" style="color: rgba(255,255,255,0.9);">전체 미수금 총액</div>
         <div class="total-right">
-          <span class="total-amount" id="grand-total" aria-live="polite">0</span>
+          <span class="total-amount" id="total-unpaid-amount">0</span>
           <span class="total-unit">원</span>
         </div>
       </div>
-
-      <!-- 날짜 -->
-      <div class="form-group">
-        <label class="form-label" for="sale-date">날짜</label>
-        <input type="date" id="sale-date" class="form-control">
+      <div class="records-card">
+        <div class="records-header">
+          <div class="records-title">🧾 업체별 미수금 (수납 처리)</div>
+          <div class="records-count" id="records-count-unpaid">0곳</div>
+        </div>
+        <input type="text" class="records-search" id="records-search-unpaid" placeholder="🔍 업체명으로 검색...">
+        <div id="records-list-unpaid"></div>
       </div>
+    </div> <!-- /#tab-unpaid -->
 
-      <!-- 메모 -->
-      <div class="form-group">
-        <label class="form-label" for="sale-memo">메모</label>
-        <input type="text" id="sale-memo" class="form-control" placeholder="메모 (선택사항)">
+    <!-- =========================
+         TAB 3: 메모장
+    ========================= -->
+    <div id="tab-notes" class="tab-pane">
+      <div class="form-card" style="margin-bottom: 20px;">
+        <div class="form-group">
+          <textarea id="note-input" class="calc-textarea" placeholder="여기에 새 메모를 작성하세요..." style="min-height: 100px;"></textarea>
+        </div>
+        <button type="button" class="btn-save" id="btn-save-note">💾 메모 저장</button>
       </div>
-
-      <button type="button" class="btn-save" id="btn-save-sales">
-        💾 저장하기
-      </button>
-      </div> <!-- /.modal-content -->
-    </div> <!-- /.modal-overlay -->
-
-    <!-- ===== 판매 기록 ===== -->
-    <div class="records-card">
-      <div class="records-header">
-        <div class="records-title">📋 판매</div>
-        <div class="records-count" id="records-count">0건</div>
-      </div>
-      <input type="text" class="records-search" id="records-search" placeholder="🔍 업체명으로 검색...">
-      <div id="records-list">
-        <div class="loading"><div class="spinner"></div></div>
-      </div>
-    </div>
-
-    <!-- ===== 플로팅 작성 버튼 ===== -->
-    <button class="fab-btn" id="btn-open-modal" aria-label="판매 기록 추가">➕</button>
+      <div id="notes-list"></div>
+    </div> <!-- /#tab-notes -->
 
   </main>
 
   <div class="toast-container" id="toast-container"></div>
 
   <script src="js/api.js"></script>
+  <script src="js/tabs.js"></script>
+  <script src="js/math_parser.js"></script>
+  <script src="js/notes.js"></script>
   <script src="js/sales.js"></script>
 </body>
 </html>

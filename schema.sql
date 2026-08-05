@@ -32,3 +32,18 @@ CREATE TABLE IF NOT EXISTS purchases (
 
 CREATE INDEX IF NOT EXISTS idx_sales_company ON sales(companyName);
 CREATE INDEX IF NOT EXISTS idx_purchases_company ON purchases(companyName);
+
+CREATE TABLE IF NOT EXISTS notes (
+  id TEXT PRIMARY KEY,
+  createdAt TEXT NOT NULL,
+  content TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS payments (
+  id TEXT PRIMARY KEY,
+  createdAt TEXT NOT NULL,
+  companyName TEXT NOT NULL,
+  amount REAL NOT NULL,
+  memo TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_payments_company ON payments(companyName);
