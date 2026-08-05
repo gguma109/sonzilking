@@ -1,6 +1,6 @@
 // ===================================================
 // functions/api/purchases/[id].js
-// DELETE /api/purchases/:id  → 수매 기록 삭제 (D1)
+// DELETE /api/purchases/:id  ???�매 기록 ??�� (D1)
 // ===================================================
 
 const CORS = {
@@ -10,7 +10,7 @@ const CORS = {
 };
 
 function getDB(env) {
-  return env.sonzilkingdb || env.DB;
+  return env.sonzil || env.sonzilkingdb || env.DB;
 }
 
 export async function onRequestOptions() {

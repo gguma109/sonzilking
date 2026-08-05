@@ -1,6 +1,6 @@
 // ===================================================
 // functions/api/companies/[name]/balance.js
-// GET /api/companies/:name/balance  → 특정 업체의 미수금 합계 조회 (D1)
+// GET /api/companies/:name/balance  ???�정 ?�체??미수�??�계 조회 (D1)
 // ===================================================
 
 const CORS = {
@@ -10,7 +10,7 @@ const CORS = {
 };
 
 function getDB(env) {
-  return env.sonzilkingdb || env.DB;
+  return env.sonzil || env.sonzilkingdb || env.DB;
 }
 
 export async function onRequestOptions() {

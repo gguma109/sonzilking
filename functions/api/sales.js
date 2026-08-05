@@ -11,7 +11,7 @@ const CORS = {
 };
 
 function getDB(env) {
-  return env.sonzil || env.sonzilkingdb || env.DB;
+  return env.sonzil || env.sonzil || env.sonzilkingdb || env.DB;
 }
 
 export async function onRequestOptions() {
