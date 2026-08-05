@@ -1,7 +1,7 @@
 // ===================================================
 // functions/api/sales/[id].js
-// DELETE /api/sales/:id  ???�매 기록 ??�� (D1)
-// PUT    /api/sales/:id  ???�매 기록 ?�납 ?�료 ?�태변�?(D1)
+// DELETE /api/sales/:id  → 판매 기록 삭제 (D1)
+// PUT    /api/sales/:id  → 판매 기록 수납 완료 상태변경 (D1)
 // ===================================================
 
 const CORS = {
@@ -11,7 +11,7 @@ const CORS = {
 };
 
 function getDB(env) {
-  return env.sonzil || env.sonzilkingdb || env.DB;
+  return env.sonzilkingdb || env.DB;
 }
 
 export async function onRequestOptions() {
@@ -35,7 +35,7 @@ export async function onRequestPut({ env, params, request }) {
     const db = getDB(env);
     const body = await request.json();
     
-    // unpaid ?�드 ?�데?�트 (boolean -> D1 integer)
+    // unpaid 필드 업데이트 (boolean -> D1 integer)
     if (body.unpaid !== undefined) {
       const unpaidVal = body.unpaid ? 1 : 0;
       await db.prepare("UPDATE sales SET unpaid = ? WHERE id = ?")
