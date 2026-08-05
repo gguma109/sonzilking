@@ -5,10 +5,26 @@
 const API = {
   baseUrl: '/api',
 
+  async handleResponse(res) {
+    if (!res.ok) {
+      try {
+        const errData = await res.json();
+        if (errData && errData.error) {
+          throw new Error(errData.error);
+        }
+      } catch (e) {
+        if (e.message && !e.message.includes('JSON')) {
+          throw e;
+        }
+      }
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    }
+    return res.json();
+  },
+
   async get(endpoint) {
     const res = await fetch(`${this.baseUrl}/${endpoint}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-    return res.json();
+    return this.handleResponse(res);
   },
 
   async post(endpoint, data) {
@@ -17,8 +33,7 @@ const API = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-    return res.json();
+    return this.handleResponse(res);
   },
 
   async put(endpoint, data) {
@@ -27,16 +42,14 @@ const API = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-    return res.json();
+    return this.handleResponse(res);
   },
 
   async del(endpoint, id) {
     const res = await fetch(`${this.baseUrl}/${endpoint}/${id}`, {
       method: 'DELETE'
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-    return res.json();
+    return this.handleResponse(res);
   }
 };
 
