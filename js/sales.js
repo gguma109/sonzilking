@@ -308,7 +308,7 @@ function renderSalesRecords(records) {
     } else {
       detailHTML = `
         <div style="font-size:0.8rem; color:#555; background:#f5f6f8; padding:8px; border-radius:6px; margin-bottom:6px;">
-          ${r.kilosText ? `<div>🐟 <b>입력:</b> ${escapeHtml(r.kilosText)} = ${formatNumber(r.kilosTotal)}원</div>` : ''}
+          ${r.kilosText ? `<div>🐟 <b>품목:</b> ${escapeHtml(r.kilosText)} = ${formatNumber(r.kilosTotal)}원</div>` : ''}
           ${r.addText ? `<div>📦 <b>부대비용:</b> ${escapeHtml(r.addText)} = ${formatNumber(r.addTotal)}원</div>` : ''}
           ${r.commissionRate > 0 ? `<div>🧾 <b>수수료:</b> ${r.commissionRate}% = ${formatNumber(r.commissionAmount)}원</div>` : ''}
         </div>
