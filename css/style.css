@@ -1240,3 +1240,10 @@ body:not(.main-body) button:disabled {
   .user-top-actions { gap: 5px; flex-shrink: 0; }
   .btn-profile-small, .btn-logout { padding: 7px 8px; font-size: 0.7rem; }
 }
+.hometax-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  text-decoration: none;
+}
