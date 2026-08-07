@@ -622,7 +622,7 @@ async function openSalesStatement(id) {
     <div class="statement-breakdown">
       <div><span>부대비용</span><strong>${extras.addText ? `${escapeHtml(extras.addText)} = ` : ''}${formatNumber(extras.addAmount)}원</strong></div>
       <div><span>수수료</span><strong>${formatNumber(extras.commissionRate)}% = ${formatNumber(extras.commissionAmount)}원</strong></div>
-      <div><span>미수금</span><strong>${balanceText}</strong></div>
+      <div><span>기존 미수금</span><strong>${balanceText}</strong></div>
     </div>
     <div class="statement-grand-total"><span>총 합계</span><strong>${formatNumber(grandTotal)}원</strong></div>
     ${record.memo ? `<div class="statement-memo">메모: ${escapeHtml(record.memo)}</div>` : ''}
@@ -651,7 +651,7 @@ function buildStatementText(record, balance = null) {
     '--------------------------------------------------',
     `부대비용: ${extras.addText ? `${extras.addText} = ` : ''}${formatNumber(extras.addAmount)}원`,
     `수수료: ${formatNumber(extras.commissionRate)}% = ${formatNumber(extras.commissionAmount)}원`,
-    `미수금: ${balance === null ? '확인 불가' : `${formatNumber(balance)}원`}`,
+    `기존 미수금: ${balance === null ? '확인 불가' : `${formatNumber(balance)}원`}`,
     '--------------------------------------------------',
     `총 합계: ${formatNumber(grandTotal)}원`,
     '',
@@ -731,7 +731,7 @@ function saveSalesStatementImage() {
   const breakdown = [
     ['부대비용', `${extras.addText ? `${extras.addText} = ` : ''}${formatNumber(extras.addAmount)}원`],
     ['수수료', `${formatNumber(extras.commissionRate)}% = ${formatNumber(extras.commissionAmount)}원`],
-    ['미수금', statementOutstandingBalance===null?'확인 불가':`${formatNumber(statementOutstandingBalance)}원`]
+    ['기존 미수금', statementOutstandingBalance===null?'확인 불가':`${formatNumber(statementOutstandingBalance)}원`]
   ];
   ctx.font='24px "Noto Sans KR", sans-serif';
   breakdown.forEach(([label,value]) => { y+=48; ctx.fillStyle='#4b5563'; ctx.textAlign='left'; ctx.fillText(label,left,y); ctx.fillStyle='#111827'; ctx.textAlign='right'; ctx.fillText(fitCanvasText(ctx,value,850),right,y); });
