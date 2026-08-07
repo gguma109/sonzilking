@@ -695,10 +695,18 @@ body {
 .statement-summary { display: flex; justify-content: space-between; align-items: center; margin: 18px 0; padding: 24px; border: 3px solid #111827; background: #f8fafc; font-size: 1.15rem; }
 .statement-summary strong { color: #1769aa; font-size: 1.65rem; }
 .statement-items-table th { background: #f8fafc; color: #4b5563; font-weight: 500; }
-.statement-items-table th:first-child, .statement-items-table td:first-child { width: 55px; text-align: center; }
-.statement-items-table th:last-child, .statement-items-table td:last-child { width: 145px; text-align: right; }
+.statement-items-table { margin-top: 20px; }
+.statement-items-table th:first-child, .statement-items-table td:first-child { width: 36%; text-align: left; }
+.statement-items-table th:nth-child(2), .statement-items-table td:nth-child(2) { width: 22%; text-align: center; }
+.statement-items-table th:nth-child(3), .statement-items-table td:nth-child(3),
+.statement-items-table th:last-child, .statement-items-table td:last-child { width: 21%; text-align: right; }
+.statement-breakdown { margin-top: 24px; padding: 14px 0; border-top: 1px dashed #9ca3af; border-bottom: 1px dashed #9ca3af; }
+.statement-breakdown > div { display: flex; justify-content: space-between; gap: 20px; padding: 7px 4px; color: #4b5563; }
+.statement-breakdown strong { color: #111827; text-align: right; font-weight: 500; }
+.statement-grand-total { display: flex; justify-content: space-between; align-items: center; padding: 22px 4px 6px; font-size: 1.25rem; }
+.statement-grand-total strong { color: #1769aa; font-size: 1.65rem; }
 .statement-memo { margin-top: 18px; color: #4b5563; }
-.statement-footer { display: flex; justify-content: space-between; margin-top: 24px; padding-top: 18px; border-top: 1px dashed #9ca3af; color: #4b5563; }
+.statement-footer { margin-top: 20px; color: #6b7280; text-align: right; font-size: 0.8rem; }
 .statement-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
 .statement-modal-actions .btn-pay, .statement-modal-actions .btn-save { width: auto; padding: 10px 18px; }
 .statement-text-card pre { margin-top: 12px; padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: #f8fafc; color: #334155; font: 0.84rem/1.65 'Noto Sans KR', sans-serif; white-space: pre-wrap; overflow-wrap: anywhere; }

@@ -517,6 +517,189 @@ function saveSalesStatementImage() {
   showToast('📷 거래명세서를 사진으로 저장했습니다.');
 }
 
+let statementOutstandingBalance = null;
+
+function parseStatementItemLine(line) {
+  const raw = String(line || '').trim();
+  const expression = raw.replace(/\s*=\s*[\d,]+(?:\.\d+)?\s*원?\s*$/, '').trim();
+  const match = expression.match(/^(.*?)\s+([\d,]+(?:\.\d+)?)\s*\*\s*([\d,]+(?:\.\d+)?)\s*$/);
+  const amount = Number(parseAndCalculateMath(expression)) || 0;
+  if (!match) {
+    return { name: expression || '판매품목', quantity: null, unitPrice: null, amount, raw: expression };
+  }
+  return {
+    name: match[1].trim() || '판매품목',
+    quantity: Number(match[2].replace(/,/g, '')),
+    unitPrice: Number(match[3].replace(/,/g, '')),
+    amount,
+    raw: expression
+  };
+}
+
+function getStatementItems(record) {
+  const lines = String(record.kilosText || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  if (lines.length) return lines.map(parseStatementItemLine);
+  return [{
+    name: '판매품목', quantity: null, unitPrice: null,
+    amount: Number(record.kilosTotal) || Number(record.total) || 0, raw: ''
+  }];
+}
+
+function getStatementExtras(record) {
+  return {
+    addText: String(record.addText || '').trim(),
+    addAmount: Number(record.addTotal) || 0,
+    commissionRate: Number(record.commissionRate) || 0,
+    commissionAmount: Number(record.commissionAmount) || 0
+  };
+}
+
+function formatStatementValue(value) {
+  return value === null || value === undefined || Number.isNaN(Number(value)) ? '-' : formatNumber(value);
+}
+
+async function getStatementBalance(record) {
+  try {
+    const response = await API.get(`companies/${encodeURIComponent(record.companyName)}/balance`);
+    return Math.max(0, Number(response.balance) || 0);
+  } catch (error) {
+    console.warn('미수금 조회 실패:', error);
+    return null;
+  }
+}
+
+async function openSalesStatement(id) {
+  const record = allSalesRecords.find(item => item.id === id);
+  if (!record) return;
+  statementSalesRecord = record;
+  statementOutstandingBalance = await getStatementBalance(record);
+  await saveStatementSnapshot(record, statementOutstandingBalance);
+  const items = getStatementItems(record);
+  const extras = getStatementExtras(record);
+  const balanceText = statementOutstandingBalance === null ? '확인 불가' : `${formatNumber(statementOutstandingBalance)}원`;
+  document.getElementById('statement-preview').innerHTML = `
+    <div class="statement-title">거 래 명 세 서</div>
+    <div class="statement-issued">발급일: ${formatStatementDate(record.date || record.createdAt)}</div>
+    <table class="statement-party-table">
+      <tr><th>공급<br>받는자</th><td>${escapeHtml(record.companyName)} 귀하</td></tr>
+      <tr><th>공급자</th><td>${escapeHtml(getStatementUserName())}</td></tr>
+    </table>
+    <table class="statement-items-table">
+      <thead><tr><th>품목</th><th>KG / 수량</th><th>단가</th><th>금액</th></tr></thead>
+      <tbody>${items.map(item => `<tr><td>${escapeHtml(item.name)}</td><td>${formatStatementValue(item.quantity)}</td><td>${item.unitPrice === null ? '-' : `${formatNumber(item.unitPrice)}원`}</td><td>${formatNumber(item.amount)}원</td></tr>`).join('')}</tbody>
+    </table>
+    <div class="statement-breakdown">
+      <div><span>부대비용</span><strong>${extras.addText ? `${escapeHtml(extras.addText)} = ` : ''}${formatNumber(extras.addAmount)}원</strong></div>
+      <div><span>수수료</span><strong>${formatNumber(extras.commissionRate)}% = ${formatNumber(extras.commissionAmount)}원</strong></div>
+      <div><span>미수금</span><strong>${balanceText}</strong></div>
+    </div>
+    <div class="statement-grand-total"><span>총 합계</span><strong>${formatNumber(record.total)}원</strong></div>
+    ${record.memo ? `<div class="statement-memo">메모: ${escapeHtml(record.memo)}</div>` : ''}
+    <div class="statement-footer"><small>위 금액을 청구합니다.</small></div>`;
+  document.getElementById('statement-modal').classList.add('active');
+}
+
+function buildStatementText(record, balance = null) {
+  const items = getStatementItems(record);
+  const extras = getStatementExtras(record);
+  const lines = [
+    '거래명세서',
+    `발급일: ${formatStatementDate(record.date || record.createdAt)}`,
+    `공급받는자: ${record.companyName} 귀하`,
+    `공급자: ${getStatementUserName()}`,
+    '',
+    '품목 | KG / 수량 | 단가 | 금액',
+    ...items.map(item => `${item.name} | ${formatStatementValue(item.quantity)} | ${item.unitPrice === null ? '-' : `${formatNumber(item.unitPrice)}원`} | ${formatNumber(item.amount)}원`),
+    '--------------------------------------------------',
+    `부대비용: ${extras.addText ? `${extras.addText} = ` : ''}${formatNumber(extras.addAmount)}원`,
+    `수수료: ${formatNumber(extras.commissionRate)}% = ${formatNumber(extras.commissionAmount)}원`,
+    `미수금: ${balance === null ? '확인 불가' : `${formatNumber(balance)}원`}`,
+    '--------------------------------------------------',
+    `총 합계: ${formatNumber(record.total)}원`,
+    '',
+    '위 금액을 청구합니다.'
+  ];
+  if (record.memo) lines.splice(lines.length - 2, 0, `메모: ${record.memo}`);
+  return lines.join('\n');
+}
+
+async function saveStatementSnapshot(record, suppliedBalance) {
+  try {
+    const balance = suppliedBalance === undefined ? await getStatementBalance(record) : suppliedBalance;
+    await API.post('statements', {
+      saleId: record.id,
+      companyName: record.companyName,
+      saleDate: String(record.date || record.createdAt || getTodayDate()).slice(0, 10),
+      total: Number(record.total) || 0,
+      content: buildStatementText(record, balance)
+    });
+  } catch (error) {
+    console.warn('거래명세서 자동 저장 실패:', error);
+  }
+}
+
+function saveSalesStatementImage() {
+  const record = statementSalesRecord;
+  if (!record) return;
+  const items = getStatementItems(record);
+  const extras = getStatementExtras(record);
+  const width = 1200, rowHeight = 82;
+  const height = 900 + items.length * rowHeight;
+  const canvas = document.createElement('canvas');
+  canvas.width = width; canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  const left = 42, right = width - 42;
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height);
+  ctx.strokeStyle = '#111827'; ctx.lineWidth = 4; ctx.strokeRect(12, 12, width - 24, height - 24);
+  ctx.fillStyle = '#111827'; ctx.textAlign = 'center'; ctx.font = '500 44px "Noto Sans KR", sans-serif';
+  ctx.fillText('거 래 명 세 서', width / 2, 85);
+  ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(left, 120); ctx.lineTo(right, 120); ctx.stroke();
+  ctx.textAlign = 'right'; ctx.fillStyle = '#4b5563'; ctx.font = '24px "Noto Sans KR", sans-serif';
+  ctx.fillText(`발급일: ${formatStatementDate(record.date || record.createdAt)}`, right, 165);
+  const partyTop = 195, partyMid = 285, partyBottom = 375, labelRight = 170;
+  ctx.strokeStyle = '#111827'; ctx.lineWidth = 2; ctx.strokeRect(left, partyTop, right-left, partyBottom-partyTop);
+  ctx.beginPath(); ctx.moveTo(labelRight, partyTop); ctx.lineTo(labelRight, partyBottom); ctx.moveTo(left, partyMid); ctx.lineTo(right, partyMid); ctx.stroke();
+  ctx.textAlign = 'center'; ctx.fillStyle = '#111827'; ctx.font = '24px "Noto Sans KR", sans-serif';
+  ctx.fillText('공급받는자', 106, 250); ctx.fillText('공급자', 106, 340);
+  ctx.textAlign = 'left'; ctx.font = '28px "Noto Sans KR", sans-serif';
+  ctx.fillText(fitCanvasText(ctx, `${record.companyName} 귀하`, 900), 190, 250);
+  ctx.fillText(fitCanvasText(ctx, getStatementUserName(), 900), 190, 340);
+  const tableTop = 410, headerHeight = 62;
+  const columns = [left, 440, 680, 900, right];
+  ctx.fillStyle = '#f8fafc'; ctx.fillRect(left, tableTop, right-left, headerHeight);
+  ctx.strokeStyle = '#111827'; ctx.lineWidth = 2; ctx.strokeRect(left, tableTop, right-left, headerHeight + items.length*rowHeight);
+  columns.slice(1,-1).forEach(x => { ctx.beginPath(); ctx.moveTo(x, tableTop); ctx.lineTo(x, tableTop+headerHeight+items.length*rowHeight); ctx.stroke(); });
+  ctx.textAlign = 'center'; ctx.fillStyle = '#4b5563'; ctx.font = '23px "Noto Sans KR", sans-serif';
+  ['품목','KG / 수량','단가','금액'].forEach((label,i) => ctx.fillText(label,(columns[i]+columns[i+1])/2,tableTop+41));
+  items.forEach((item,index) => {
+    const top = tableTop+headerHeight+index*rowHeight;
+    ctx.beginPath(); ctx.moveTo(left,top); ctx.lineTo(right,top); ctx.stroke();
+    ctx.fillStyle='#111827'; ctx.font='23px "Noto Sans KR", sans-serif';
+    ctx.textAlign='left'; ctx.fillText(fitCanvasText(ctx,item.name,360),columns[0]+16,top+51);
+    ctx.textAlign='center'; ctx.fillText(formatStatementValue(item.quantity),(columns[1]+columns[2])/2,top+51);
+    ctx.textAlign='right'; ctx.fillText(item.unitPrice===null?'-':`${formatNumber(item.unitPrice)}원`,columns[3]-16,top+51);
+    ctx.fillText(`${formatNumber(item.amount)}원`,columns[4]-16,top+51);
+  });
+  let y = tableTop+headerHeight+items.length*rowHeight+52;
+  ctx.setLineDash([8,8]); ctx.strokeStyle='#9ca3af'; ctx.beginPath(); ctx.moveTo(left,y); ctx.lineTo(right,y); ctx.stroke(); ctx.setLineDash([]);
+  const breakdown = [
+    ['부대비용', `${extras.addText ? `${extras.addText} = ` : ''}${formatNumber(extras.addAmount)}원`],
+    ['수수료', `${formatNumber(extras.commissionRate)}% = ${formatNumber(extras.commissionAmount)}원`],
+    ['미수금', statementOutstandingBalance===null?'확인 불가':`${formatNumber(statementOutstandingBalance)}원`]
+  ];
+  ctx.font='24px "Noto Sans KR", sans-serif';
+  breakdown.forEach(([label,value]) => { y+=48; ctx.fillStyle='#4b5563'; ctx.textAlign='left'; ctx.fillText(label,left,y); ctx.fillStyle='#111827'; ctx.textAlign='right'; ctx.fillText(fitCanvasText(ctx,value,850),right,y); });
+  y+=35; ctx.setLineDash([8,8]); ctx.strokeStyle='#9ca3af'; ctx.beginPath(); ctx.moveTo(left,y); ctx.lineTo(right,y); ctx.stroke(); ctx.setLineDash([]);
+  y+=65; ctx.fillStyle='#111827'; ctx.textAlign='left'; ctx.font='700 30px "Noto Sans KR", sans-serif'; ctx.fillText('총 합계',left,y);
+  ctx.fillStyle='#1769aa'; ctx.textAlign='right'; ctx.font='700 38px "Noto Sans KR", sans-serif'; ctx.fillText(`${formatNumber(record.total)}원`,right,y);
+  y+=62; ctx.fillStyle='#6b7280'; ctx.textAlign='right'; ctx.font='20px "Noto Sans KR", sans-serif'; ctx.fillText('위 금액을 청구합니다.',right,y);
+  const link=document.createElement('a');
+  const safeCompany=String(record.companyName||'거래처').replace(/[\\/:*?"<>|]/g,'_');
+  link.download=`거래명세서_${safeCompany}_${String(record.date||record.createdAt).slice(0,10)}.png`;
+  link.href=canvas.toDataURL('image/png'); link.click();
+  showToast('거래명세서를 사진으로 저장했습니다.');
+}
+
 window.copySaleRecord = function(id) {
   const r = allSalesRecords.find(x => x.id === id);
   if (!r) return;
