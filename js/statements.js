@@ -1,7 +1,13 @@
 let allStatements = [];
+let previewStatementId = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('statements-search').addEventListener('input', filterStatements);
+  document.getElementById('close-statement-image-preview').addEventListener('click', closeStatementImagePreview);
+  document.getElementById('save-previewed-statement').addEventListener('click', () => saveStatementImage(previewStatementId));
+  document.getElementById('statement-image-preview-modal').addEventListener('click', event => {
+    if (event.target.id === 'statement-image-preview-modal') closeStatementImagePreview();
+  });
   await loadStatements();
 });
 
@@ -9,7 +15,7 @@ async function loadStatements() {
   const container = document.getElementById('statements-list');
   try {
     const response = await API.get('statements');
-    allStatements = response.data || [];
+    allStatements = (response.data || []).map(record => ({ ...record, content: normalizeStatementContent(record.content) }));
     renderStatements(allStatements);
   } catch (error) {
     container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">거래명세서를 불러오지 못했습니다.<br>${escapeHtml(error.message)}</div></div>`;
@@ -33,10 +39,29 @@ function renderStatements(records) {
       <pre>${escapeHtml(record.content)}</pre>
       <div class="record-actions">
         <button class="btn-pay" onclick="copyStatement('${record.id}')">텍스트 복사</button>
+        <button class="btn-pay" onclick="previewStatementImage('${record.id}')">사진 미리보기</button>
         <button class="btn-save" onclick="saveStatementImage('${record.id}')">사진으로 저장</button>
         <button class="btn-delete" onclick="deleteStatement('${record.id}')">삭제</button>
       </div>
     </article>`).join('');
+}
+
+function normalizeStatementContent(content) {
+  const lines = String(content || '').split(/\r?\n/);
+  const isReceiver = line => /^공급받는자\s*:/.test(line.trim());
+  const isSupplier = line => /^(공급자(?:\s+(?:상호|성명))?\s*:|등록번호\s*:|이메일\s*:|휴대번호\s*:|계좌번호\s*:)/.test(line.trim());
+  const identityIndexes = [];
+  const supplierLines = [];
+  let receiverLine = '';
+  lines.forEach((line, index) => {
+    if (isReceiver(line)) { identityIndexes.push(index); receiverLine = line; }
+    else if (isSupplier(line)) { identityIndexes.push(index); supplierLines.push(line); }
+  });
+  if (!receiverLine || !supplierLines.length) return lines.join('\n');
+  const insertAt = Math.min(...identityIndexes);
+  const remaining = lines.filter((_, index) => !identityIndexes.includes(index));
+  remaining.splice(insertAt, 0, ...supplierLines, receiverLine);
+  return remaining.join('\n');
 }
 
 function filterStatements() {
@@ -67,9 +92,7 @@ function wrapStatementLine(ctx, text, maxWidth) {
   return rows;
 }
 
-function saveStatementImage(id) {
-  const record = allStatements.find(item => item.id === id);
-  if (!record) return;
+function createStatementCanvas(record) {
   const width = 1200;
   const padding = 70;
   const lineHeight = 42;
@@ -104,6 +127,26 @@ function saveStatementImage(id) {
     ctx.fillText(line, padding, y);
     y += lineHeight;
   });
+  return canvas;
+}
+
+function previewStatementImage(id) {
+  const record = allStatements.find(item => item.id === id);
+  if (!record) return;
+  previewStatementId = id;
+  document.getElementById('statement-image-preview').src = createStatementCanvas(record).toDataURL('image/png');
+  document.getElementById('statement-image-preview-modal').classList.add('active');
+}
+
+function closeStatementImagePreview() {
+  document.getElementById('statement-image-preview-modal').classList.remove('active');
+  previewStatementId = null;
+}
+
+function saveStatementImage(id) {
+  const record = allStatements.find(item => item.id === id);
+  if (!record) return;
+  const canvas = createStatementCanvas(record);
   const link = document.createElement('a');
   const safeCompany = String(record.companyName || '거래처').replace(/[\\/:*?"<>|]/g, '_');
   link.download = `거래명세서_${safeCompany}_${record.saleDate}.png`;

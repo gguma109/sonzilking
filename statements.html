@@ -27,6 +27,13 @@
       <div id="statements-list"><div class="loading"><div class="spinner"></div></div></div>
     </section>
   </main>
+  <div class="modal-overlay statement-image-preview-modal" id="statement-image-preview-modal">
+    <div class="statement-image-preview-content">
+      <div class="statement-image-preview-header"><strong>거래명세서 사진 미리보기</strong><button type="button" id="close-statement-image-preview">닫기</button></div>
+      <div class="statement-image-preview-scroll"><img id="statement-image-preview" alt="거래명세서 사진 미리보기"></div>
+      <button type="button" class="btn-save" id="save-previewed-statement">사진으로 저장</button>
+    </div>
+  </div>
   <div class="toast-container" id="toast-container"></div>
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
