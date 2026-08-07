@@ -6,6 +6,7 @@ let allSalesRecords = [];
 let allUnpaidRecords = [];
 let renderedUnpaidRecords = [];
 let editSalesId = null; // 현재 편집 중인 레코드 ID;
+let statementSalesRecord = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
   // 기본 날짜
@@ -32,6 +33,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-save-sales').addEventListener('click', saveSale);
   document.getElementById('records-search').addEventListener('input', filterSalesRecords);
   document.getElementById('records-search-unpaid').addEventListener('input', filterUnpaidRecords);
+  document.getElementById('btn-close-statement').addEventListener('click', closeSalesStatement);
+  document.getElementById('btn-close-statement-bottom').addEventListener('click', closeSalesStatement);
+  document.getElementById('btn-save-statement-image').addEventListener('click', saveSalesStatementImage);
+  document.getElementById('statement-modal').addEventListener('click', event => {
+    if (event.target.id === 'statement-modal') closeSalesStatement();
+  });
 
   // 모달 제어
   const modal = document.getElementById('form-modal');
@@ -317,12 +324,162 @@ function renderSalesRecords(records) {
       </div>
       ${r.memo ? `<div class="record-memo">📝 ${escapeHtml(r.memo)}</div>` : ''}
       <div class="record-actions">
+        <button class="btn-pay" style="padding: 4px 12px; font-size: 0.72rem; margin-right:4px;" onclick="openSalesStatement('${r.id}')">📄 거래명세서</button>
         <button class="btn-pay" style="padding: 4px 12px; font-size: 0.72rem; margin-right:4px;" onclick="copySaleRecord('${r.id}')">📋 복사</button>
         <button class="btn-pay" style="padding: 4px 12px; font-size: 0.72rem; margin-right:4px;" onclick="editSaleRecord('${r.id}')">✏️ 편집</button>
         <button class="btn-delete" onclick="deleteSaleRecord('${r.id}')">🗑 삭제</button>
       </div>
     </div>
   `}).join('');
+}
+
+function getStatementItems(record) {
+  const items = [];
+  const salesLines = String(record.kilosText || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  if (salesLines.length) {
+    salesLines.forEach((line, index) => items.push({
+      name: salesLines.length > 1 ? `판매내역 ${index + 1}` : '판매내역',
+      description: line,
+      amount: parseAndCalculateMath(line)
+    }));
+  } else if (Number(record.kilosTotal) > 0) {
+    items.push({ name: '판매금액', description: '', amount: Number(record.kilosTotal) });
+  }
+
+  const addLines = String(record.addText || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  if (addLines.length) {
+    addLines.forEach((line, index) => items.push({
+      name: addLines.length > 1 ? `부대비용 ${index + 1}` : '부대비용',
+      description: line,
+      amount: parseAndCalculateMath(line)
+    }));
+  } else if (Number(record.addTotal) > 0) {
+    items.push({ name: '부대비용', description: '', amount: Number(record.addTotal) });
+  }
+  if (Number(record.commissionAmount) > 0) {
+    items.push({ name: `수수료 ${Number(record.commissionRate) || 0}%`, description: '', amount: Number(record.commissionAmount) });
+  }
+  return items.length ? items : [{ name: '판매금액', description: '', amount: Number(record.total) || 0 }];
+}
+
+function getStatementUserName() {
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    return user.nickname || user.name || user.username || '손질왕';
+  } catch {
+    return '손질왕';
+  }
+}
+
+function formatStatementDate(rawDate) {
+  const date = String(rawDate || getTodayDate()).slice(0, 10).split('-');
+  return `${Number(date[0])}년 ${Number(date[1])}월 ${Number(date[2])}일`;
+}
+
+function openSalesStatement(id) {
+  const record = allSalesRecords.find(item => item.id === id);
+  if (!record) return;
+  statementSalesRecord = record;
+  const items = getStatementItems(record);
+  document.getElementById('statement-preview').innerHTML = `
+    <div class="statement-title">거 래 명 세 서</div>
+    <div class="statement-issued">발급일: ${formatStatementDate(record.date || record.createdAt)}</div>
+    <table class="statement-party-table">
+      <tr><th>공급<br>받는자</th><td>${escapeHtml(record.companyName)} 귀하</td></tr>
+      <tr><th>공급자</th><td>${escapeHtml(getStatementUserName())}</td></tr>
+    </table>
+    <div class="statement-summary"><span>금일 합계</span><strong>${formatNumber(record.total)} 원</strong></div>
+    <table class="statement-items-table">
+      <thead><tr><th>No</th><th>품목</th><th>내역</th><th>금액</th></tr></thead>
+      <tbody>${items.map((item, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(item.name)}</td><td>${escapeHtml(item.description)}</td><td>${formatNumber(item.amount)}</td></tr>`).join('')}</tbody>
+    </table>
+    ${record.memo ? `<div class="statement-memo">메모: ${escapeHtml(record.memo)}</div>` : ''}
+    <div class="statement-footer">총 ${items.length}개 품목 <span>위 금액을 청구합니다.</span></div>`;
+  document.getElementById('statement-modal').classList.add('active');
+}
+
+function closeSalesStatement() {
+  document.getElementById('statement-modal').classList.remove('active');
+}
+
+function fitCanvasText(ctx, text, maxWidth) {
+  const source = String(text || '');
+  if (ctx.measureText(source).width <= maxWidth) return source;
+  let result = source;
+  while (result.length && ctx.measureText(`${result}…`).width > maxWidth) result = result.slice(0, -1);
+  return `${result}…`;
+}
+
+function saveSalesStatementImage() {
+  const record = statementSalesRecord;
+  if (!record) return;
+  const items = getStatementItems(record);
+  const width = 1200;
+  const rowHeight = 82;
+  const height = 700 + items.length * rowHeight;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+  ctx.strokeStyle = '#111827';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(12, 12, width - 24, height - 24);
+  ctx.fillStyle = '#111827';
+  ctx.textAlign = 'center';
+  ctx.font = '500 44px "Noto Sans KR", sans-serif';
+  ctx.fillText('거 래 명 세 서', width / 2, 85);
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(42, 120); ctx.lineTo(width - 42, 120); ctx.stroke();
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#4b5563';
+  ctx.font = '24px "Noto Sans KR", sans-serif';
+  ctx.fillText(`발급일: ${formatStatementDate(record.date || record.createdAt)}`, width - 48, 165);
+
+  const left = 42, right = width - 42, partyTop = 195, partyMid = 285, partyBottom = 375, labelRight = 170;
+  ctx.strokeStyle = '#111827'; ctx.lineWidth = 2;
+  ctx.strokeRect(left, partyTop, right - left, partyBottom - partyTop);
+  ctx.beginPath(); ctx.moveTo(labelRight, partyTop); ctx.lineTo(labelRight, partyBottom); ctx.moveTo(left, partyMid); ctx.lineTo(right, partyMid); ctx.stroke();
+  ctx.textAlign = 'center'; ctx.fillStyle = '#111827'; ctx.font = '24px "Noto Sans KR", sans-serif';
+  ctx.fillText('공급받는자', 105, 250); ctx.fillText('공급자', 105, 340);
+  ctx.textAlign = 'left'; ctx.font = '28px "Noto Sans KR", sans-serif';
+  ctx.fillText(fitCanvasText(ctx, `${record.companyName} 귀하`, 900), 190, 250);
+  ctx.fillText(fitCanvasText(ctx, getStatementUserName(), 900), 190, 340);
+
+  const summaryTop = 398, summaryBottom = 515;
+  ctx.fillStyle = '#f8fafc'; ctx.fillRect(left, summaryTop, right - left, summaryBottom - summaryTop);
+  ctx.strokeStyle = '#111827'; ctx.lineWidth = 4; ctx.strokeRect(left, summaryTop, right - left, summaryBottom - summaryTop);
+  ctx.fillStyle = '#111827'; ctx.textAlign = 'left'; ctx.font = '700 28px "Noto Sans KR", sans-serif'; ctx.fillText('금일 합계', 72, 462);
+  ctx.fillStyle = '#1769aa'; ctx.textAlign = 'right'; ctx.font = '700 36px "Noto Sans KR", sans-serif'; ctx.fillText(`${formatNumber(record.total)} 원`, right - 28, 464);
+
+  const tableTop = 545, headerHeight = 60;
+  const columns = [left, 105, 350, 900, right];
+  ctx.fillStyle = '#f8fafc'; ctx.fillRect(left, tableTop, right - left, headerHeight);
+  ctx.strokeStyle = '#111827'; ctx.lineWidth = 2; ctx.strokeRect(left, tableTop, right - left, headerHeight + items.length * rowHeight);
+  columns.slice(1, -1).forEach(x => { ctx.beginPath(); ctx.moveTo(x, tableTop); ctx.lineTo(x, tableTop + headerHeight + items.length * rowHeight); ctx.stroke(); });
+  ctx.textAlign = 'center'; ctx.fillStyle = '#4b5563'; ctx.font = '23px "Noto Sans KR", sans-serif';
+  ['No', '품목', '내역', '금액'].forEach((label, index) => ctx.fillText(label, (columns[index] + columns[index + 1]) / 2, tableTop + 39));
+  items.forEach((item, index) => {
+    const top = tableTop + headerHeight + index * rowHeight;
+    ctx.beginPath(); ctx.moveTo(left, top); ctx.lineTo(right, top); ctx.stroke();
+    ctx.fillStyle = '#111827'; ctx.font = '23px "Noto Sans KR", sans-serif';
+    ctx.textAlign = 'center'; ctx.fillText(String(index + 1), (columns[0] + columns[1]) / 2, top + 50);
+    ctx.textAlign = 'left'; ctx.fillText(fitCanvasText(ctx, item.name, 215), columns[1] + 16, top + 50);
+    ctx.fillStyle = '#4b5563'; ctx.fillText(fitCanvasText(ctx, item.description, 515), columns[2] + 16, top + 50);
+    ctx.fillStyle = '#111827'; ctx.textAlign = 'right'; ctx.fillText(formatNumber(item.amount), columns[4] - 16, top + 50);
+  });
+  const footerY = tableTop + headerHeight + items.length * rowHeight + 70;
+  ctx.strokeStyle = '#9ca3af'; ctx.setLineDash([8, 8]); ctx.beginPath(); ctx.moveTo(left, footerY - 30); ctx.lineTo(right, footerY - 30); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = '#4b5563'; ctx.font = '24px "Noto Sans KR", sans-serif'; ctx.textAlign = 'left'; ctx.fillText(`총 ${items.length}개 품목`, left, footerY + 10);
+  ctx.textAlign = 'right'; ctx.fillText('위 금액을 청구합니다.', right, footerY + 10);
+
+  const link = document.createElement('a');
+  const safeCompany = String(record.companyName || '거래처').replace(/[\\/:*?"<>|]/g, '_');
+  link.download = `거래명세서_${safeCompany}_${String(record.date || record.createdAt).slice(0, 10)}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  showToast('📷 거래명세서를 사진으로 저장했습니다.');
 }
 
 window.copySaleRecord = function(id) {
