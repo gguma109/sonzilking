@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderStatistics();
   });
   document.getElementById('statistics-year').addEventListener('change', renderStatistics);
+  document.getElementById('statistics-company').addEventListener('change', renderStatistics);
   await loadStatistics();
 });
 
@@ -27,6 +28,7 @@ async function loadStatistics() {
     statisticsSales = salesResponse.data || [];
     statisticsPurchases = purchasesResponse.data || [];
     populateYearFilter();
+    populateCompanyFilter();
     syncYearFilter();
     renderStatistics();
   } catch (error) {
@@ -55,9 +57,21 @@ function populateYearFilter() {
   select.value = String(new Date().getFullYear());
 }
 
+function populateCompanyFilter() {
+  const companies = [...statisticsSales, ...statisticsPurchases]
+    .map(record => String(record.companyName || '거래처 미입력'))
+    .filter(Boolean);
+  const uniqueCompanies = [...new Set(companies)].sort((a, b) => a.localeCompare(b, 'ko'));
+  const select = document.getElementById('statistics-company');
+  select.innerHTML = '<option value="all">전체 거래처</option>' +
+    uniqueCompanies.map(company => `<option value="${escapeHtml(company)}">${escapeHtml(company)}</option>`).join('');
+}
+
 function syncYearFilter() {
   const group = document.getElementById('statistics-group').value;
   const yearSelect = document.getElementById('statistics-year');
+  const companyFilter = document.getElementById('statistics-company-filter');
+  companyFilter.hidden = group !== 'company';
   if (group === 'year') {
     yearSelect.value = 'all';
     yearSelect.disabled = true;
@@ -98,12 +112,15 @@ function recordMatchesYear(record, selectedYear) {
 function renderStatistics() {
   const group = document.getElementById('statistics-group').value;
   const selectedYear = document.getElementById('statistics-year').value;
+  const selectedCompany = document.getElementById('statistics-company').value;
   const rows = new Map();
   let salesTotal = 0;
   let purchaseTotal = 0;
 
   const addRecord = (record, field) => {
     if (!recordMatchesYear(record, selectedYear)) return;
+    const companyName = String(record.companyName || '거래처 미입력');
+    if (group === 'company' && selectedCompany !== 'all' && companyName !== selectedCompany) return;
     const groupInfo = getGroupInfo(record, group);
     if (!groupInfo) return;
     const amount = Number(record.total) || 0;

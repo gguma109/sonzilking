@@ -369,7 +369,10 @@ function renderUnpaidRecords(records) {
     <div class="record-item" style="border-left: 4px solid ${isPaid ? 'var(--success)' : 'var(--danger)'};">
       <div class="record-header">
         <div class="record-company">${safeName}</div>
-        <span style="padding: 4px 9px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; color: white; background: ${isPaid ? 'var(--success)' : 'var(--danger)'};">${isPaid ? '완납' : '미수'}</span>
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
+          <button class="btn-pay" style="width:auto; padding:4px 9px; font-size:0.72rem;" onclick="togglePaymentHistory(${index})">✏️ 수납내역 편집</button>
+          <span style="padding: 4px 9px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; color: white; background: ${isPaid ? 'var(--success)' : 'var(--danger)'};">${isPaid ? '완납' : '미수'}</span>
+        </div>
       </div>
 
       <div style="display:grid; grid-template-columns: 1fr auto; gap: 6px 16px; margin-top: 10px; font-size: 0.9rem;">
@@ -387,6 +390,7 @@ function renderUnpaidRecords(records) {
           <button class="btn-pay" style="width: auto; padding: 6px 12px;" onclick="submitPayment(${index}, true)">완납</button>
         </div>
       </div>`}
+      <div id="payment-history-${index}" style="display:none; margin-top:12px;"></div>
     </div>
   `}).join('');
 }
@@ -395,6 +399,64 @@ function filterUnpaidRecords() {
   const q = document.getElementById('records-search-unpaid').value.trim().toLowerCase();
   const filtered = q ? allUnpaidRecords.filter(r => r.companyName.toLowerCase().includes(q)) : allUnpaidRecords;
   renderUnpaidRecords(filtered);
+}
+
+async function togglePaymentHistory(recordIndex) {
+  const record = renderedUnpaidRecords[recordIndex];
+  if (!record) return;
+  const container = document.getElementById(`payment-history-${recordIndex}`);
+  if (container.style.display !== 'none') {
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = 'block';
+  container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const response = await API.get(`payments?company=${encodeURIComponent(record.companyName)}`);
+    const payments = response.data || [];
+    if (!payments.length) {
+      container.innerHTML = '<div class="statistics-empty">수정할 수납 내역이 없습니다.</div>';
+      return;
+    }
+    container.innerHTML = `<div style="background:#f8f9fa; padding:12px; border-radius:8px;">
+      <div style="font-size:0.82rem; font-weight:700; margin-bottom:8px;">수납 내역</div>
+      ${payments.map(payment => `<div style="display:grid; grid-template-columns:1fr minmax(110px, 0.7fr) auto auto; gap:6px; align-items:center; margin-top:7px;">
+        <span style="font-size:0.78rem; color:var(--text-muted);">${formatDate(payment.createdAt)}</span>
+        <input type="number" id="payment-edit-${payment.id}" class="form-control" min="1" value="${Number(payment.amount) || 0}" style="padding:6px 8px;">
+        <button class="btn-save" style="width:auto; padding:6px 9px; font-size:0.72rem;" onclick="updatePayment('${payment.id}')">저장</button>
+        <button class="btn-del" style="width:auto; padding:6px 9px; font-size:0.72rem;" onclick="deletePayment('${payment.id}')">삭제</button>
+      </div>`).join('')}
+    </div>`;
+  } catch (error) {
+    container.innerHTML = `<div class="statistics-empty">수납 내역을 불러오지 못했습니다.<br>${escapeHtml(error.message)}</div>`;
+  }
+}
+
+async function updatePayment(id) {
+  const amount = Number(document.getElementById(`payment-edit-${id}`).value);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    showToast('올바른 수납 금액을 입력해주세요.', 'error');
+    return;
+  }
+  try {
+    await API.put(`payments/${id}`, { amount });
+    showToast('✅ 수납 금액을 수정했습니다.');
+    await loadUnpaidRecords();
+  } catch (error) {
+    showToast('❌ 수납 금액 수정 실패: ' + error.message, 'error');
+  }
+}
+
+async function deletePayment(id) {
+  if (!confirm('이 수납 기록을 삭제하시겠습니까?')) return;
+  try {
+    await API.del('payments', id);
+    showToast('🗑️ 수납 기록을 삭제했습니다.');
+    await loadUnpaidRecords();
+  } catch (error) {
+    showToast('❌ 수납 기록 삭제 실패: ' + error.message, 'error');
+  }
 }
 
 async function submitPayment(recordIndex, fullPayment = false) {

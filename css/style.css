@@ -636,6 +636,7 @@ body {
 }
 
 .statistics-filter .form-group { margin-bottom: 0; }
+.statistics-company-filter { grid-column: 1 / -1; }
 
 .statistics-totals {
   display: grid;
