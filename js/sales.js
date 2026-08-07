@@ -721,10 +721,10 @@ function saveSalesStatementImage() {
     const top = tableTop+headerHeight+index*rowHeight;
     ctx.beginPath(); ctx.moveTo(left,top); ctx.lineTo(right,top); ctx.stroke();
     ctx.fillStyle='#111827'; ctx.font='23px "Noto Sans KR", sans-serif';
-    ctx.textAlign='left'; ctx.fillText(fitCanvasText(ctx,item.name,360),columns[0]+16,top+51);
+    ctx.textAlign='center'; ctx.fillText(fitCanvasText(ctx,item.name,360),(columns[0]+columns[1])/2,top+51);
     ctx.textAlign='center'; ctx.fillText(formatStatementValue(item.quantity),(columns[1]+columns[2])/2,top+51);
-    ctx.textAlign='right'; ctx.fillText(item.unitPrice===null?'-':`${formatNumber(item.unitPrice)}원`,columns[3]-16,top+51);
-    ctx.fillText(`${formatNumber(item.amount)}원`,columns[4]-16,top+51);
+    ctx.textAlign='center'; ctx.fillText(item.unitPrice===null?'-':`${formatNumber(item.unitPrice)}원`,(columns[2]+columns[3])/2,top+51);
+    ctx.fillText(`${formatNumber(item.amount)}원`,(columns[3]+columns[4])/2,top+51);
   });
   let y = tableTop+headerHeight+items.length*rowHeight+52;
   ctx.setLineDash([8,8]); ctx.strokeStyle='#9ca3af'; ctx.beginPath(); ctx.moveTo(left,y); ctx.lineTo(right,y); ctx.stroke(); ctx.setLineDash([]);
