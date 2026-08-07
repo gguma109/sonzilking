@@ -701,6 +701,42 @@ body {
 .statement-modal-actions .btn-pay, .statement-modal-actions .btn-save { width: auto; padding: 10px 18px; }
 .statement-text-card pre { margin-top: 12px; padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: #f8fafc; color: #334155; font: 0.84rem/1.65 'Noto Sans KR', sans-serif; white-space: pre-wrap; overflow-wrap: anywhere; }
 
+/* Inner-page button system: simple neutral outlined controls */
+body:not(.main-body) button,
+body:not(.main-body) .btn-back {
+  background: #f7f7f7 !important;
+  color: #111111 !important;
+  border: 2px solid #7a7a7a !important;
+  border-radius: 5px !important;
+  box-shadow: none !important;
+  font-family: inherit;
+  font-weight: 500;
+  text-shadow: none !important;
+  transition: background-color 0.15s ease, border-color 0.15s ease !important;
+}
+
+body:not(.main-body) button:hover,
+body:not(.main-body) .btn-back:hover {
+  background: #ededed !important;
+  border-color: #4f4f4f !important;
+  color: #000000 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+body:not(.main-body) button:active,
+body:not(.main-body) .btn-back:active {
+  background: #e2e2e2 !important;
+  transform: none !important;
+}
+
+body:not(.main-body) button:disabled {
+  background: #eeeeee !important;
+  color: #999999 !important;
+  border-color: #b8b8b8 !important;
+  opacity: 0.75;
+}
+
 @media (max-width: 520px) {
   .monthly-summary-card { grid-template-columns: 1fr; }
   .statement-modal { padding: 8px; }
