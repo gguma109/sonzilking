@@ -16,6 +16,7 @@ async function loadProfile() {
     document.getElementById('profile-registration-number').value = user.registrationNumber || '';
     document.getElementById('profile-business-email').value = user.businessEmail || '';
     document.getElementById('profile-phone').value = user.phone || '';
+    document.getElementById('profile-bank-account').value = user.bankAccount || '';
   } catch (error) {
     showToast('회원정보를 불러오지 못했습니다: ' + error.message, 'error');
   }
@@ -31,19 +32,21 @@ async function saveProfile(event) {
   const registrationNumber = document.getElementById('profile-registration-number').value.trim();
   const businessEmail = document.getElementById('profile-business-email').value.trim();
   const phone = document.getElementById('profile-phone').value.trim();
+  const bankAccount = document.getElementById('profile-bank-account').value.trim();
   const currentPassword = document.getElementById('profile-current-password').value;
   const newPassword = document.getElementById('profile-new-password').value;
   const confirmPassword = document.getElementById('profile-confirm-password').value;
   if (!name) return showToast('이름을 입력해주세요.', 'error');
   if (newPassword && newPassword !== confirmPassword) return showToast('새 비밀번호가 일치하지 않습니다.', 'error');
-  if ((currentPassword && !newPassword) || (!currentPassword && newPassword)) return showToast('현재 비밀번호와 새 비밀번호를 모두 입력해주세요.', 'error');
+  if (newPassword && !currentPassword) return showToast('비밀번호를 변경하려면 현재 비밀번호를 입력해주세요.', 'error');
   try {
-    const response = await API.put('profile', { name, nickname, recoveryEmail, businessName, representativeName, registrationNumber, businessEmail, phone, currentPassword, newPassword });
+    const response = await API.put('profile', { name, nickname, recoveryEmail, businessName, representativeName, registrationNumber, businessEmail, phone, bankAccount, currentPassword: newPassword ? currentPassword : '', newPassword });
     localStorage.setItem('user', JSON.stringify(response.user));
     document.getElementById('profile-current-password').value = '';
     document.getElementById('profile-new-password').value = '';
     document.getElementById('profile-confirm-password').value = '';
     showToast('회원정보를 저장했습니다.');
+    setTimeout(() => { window.location.href = 'index.html'; }, 600);
   } catch (error) {
     showToast('저장 실패: ' + error.message, 'error');
   }

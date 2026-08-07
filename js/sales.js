@@ -383,7 +383,8 @@ function getStatementSupplier() {
     representativeName: profile.representativeName || getStatementUserName(),
     registrationNumber: profile.registrationNumber || '-',
     businessEmail: profile.businessEmail || '-',
-    phone: profile.phone || '-'
+    phone: profile.phone || '-',
+    bankAccount: profile.bankAccount || '-'
   };
 }
 
@@ -607,12 +608,12 @@ async function openSalesStatement(id) {
     <div class="statement-title">거 래 명 세 서</div>
     <div class="statement-issued">발급일: ${formatStatementDate(record.date || record.createdAt)}</div>
     <table class="statement-party-table">
-      <tr><th>공급<br>받는자</th><td>${escapeHtml(record.companyName)} 귀하</td></tr>
-      <tr><th>공급자</th><td class="statement-supplier-details">
+      <tr><th>공급자</th><td><div class="statement-supplier-details">
         <span><b>상호</b> ${escapeHtml(supplier.businessName)}</span><span><b>성명</b> ${escapeHtml(supplier.representativeName)}</span>
         <span><b>등록번호</b> ${escapeHtml(supplier.registrationNumber)}</span><span><b>이메일</b> ${escapeHtml(supplier.businessEmail)}</span>
-        <span><b>휴대번호</b> ${escapeHtml(supplier.phone)}</span>
-      </td></tr>
+        <span><b>휴대번호</b> ${escapeHtml(supplier.phone)}</span><span><b>계좌번호</b> ${escapeHtml(supplier.bankAccount)}</span>
+      </div></td></tr>
+      <tr><th>공급<br>받는자</th><td>${escapeHtml(record.companyName)} 귀하</td></tr>
     </table>
     <table class="statement-items-table">
       <thead><tr><th>품목</th><th>KG / 수량</th><th>단가</th><th>금액</th></tr></thead>
@@ -637,12 +638,13 @@ function buildStatementText(record, balance = null) {
   const lines = [
     '거래명세서',
     `발급일: ${formatStatementDate(record.date || record.createdAt)}`,
-    `공급받는자: ${record.companyName} 귀하`,
     `공급자 상호: ${supplier.businessName}`,
     `공급자 성명: ${supplier.representativeName}`,
     `등록번호: ${supplier.registrationNumber}`,
     `이메일: ${supplier.businessEmail}`,
     `휴대번호: ${supplier.phone}`,
+    `계좌번호: ${supplier.bankAccount}`,
+    `공급받는자: ${record.companyName} 귀하`,
     '',
     '품목 | KG / 수량 | 단가 | 금액',
     ...items.map(item => `${item.name} | ${formatStatementValue(item.quantity)} | ${item.unitPrice === null ? '-' : `${formatNumber(item.unitPrice)}원`} | ${formatNumber(item.amount)}원`),
@@ -695,18 +697,19 @@ function saveSalesStatementImage() {
   ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(left, 120); ctx.lineTo(right, 120); ctx.stroke();
   ctx.textAlign = 'right'; ctx.fillStyle = '#4b5563'; ctx.font = '24px "Noto Sans KR", sans-serif';
   ctx.fillText(`발급일: ${formatStatementDate(record.date || record.createdAt)}`, right, 165);
-  const partyTop = 195, partyMid = 285, partyBottom = 485, labelRight = 170;
+  const partyTop = 195, partyMid = 395, partyBottom = 485, labelRight = 170;
   ctx.strokeStyle = '#111827'; ctx.lineWidth = 2; ctx.strokeRect(left, partyTop, right-left, partyBottom-partyTop);
   ctx.beginPath(); ctx.moveTo(labelRight, partyTop); ctx.lineTo(labelRight, partyBottom); ctx.moveTo(left, partyMid); ctx.lineTo(right, partyMid); ctx.stroke();
   ctx.textAlign = 'center'; ctx.fillStyle = '#111827'; ctx.font = '24px "Noto Sans KR", sans-serif';
-  ctx.fillText('공급받는자', 106, 250); ctx.fillText('공급자', 106, 390);
+  ctx.fillText('공급자', 106, 300); ctx.fillText('공급받는자', 106, 450);
   ctx.textAlign = 'left'; ctx.font = '28px "Noto Sans KR", sans-serif';
-  ctx.fillText(fitCanvasText(ctx, `${record.companyName} 귀하`, 900), 190, 250);
   ctx.font = '22px "Noto Sans KR", sans-serif';
-  ctx.fillText(fitCanvasText(ctx, `상호 ${supplier.businessName}   |   성명 ${supplier.representativeName}`, 900), 190, 330);
-  ctx.fillText(fitCanvasText(ctx, `등록번호 ${supplier.registrationNumber}`, 900), 190, 370);
-  ctx.fillText(fitCanvasText(ctx, `이메일 ${supplier.businessEmail}`, 900), 190, 410);
-  ctx.fillText(fitCanvasText(ctx, `휴대번호 ${supplier.phone}`, 900), 190, 450);
+  ctx.fillText(fitCanvasText(ctx, `상호 ${supplier.businessName}   |   성명 ${supplier.representativeName}`, 900), 190, 235);
+  ctx.fillText(fitCanvasText(ctx, `등록번호 ${supplier.registrationNumber}`, 900), 190, 272);
+  ctx.fillText(fitCanvasText(ctx, `이메일 ${supplier.businessEmail}   |   휴대번호 ${supplier.phone}`, 900), 190, 309);
+  ctx.fillText(fitCanvasText(ctx, `계좌번호 ${supplier.bankAccount}`, 900), 190, 346);
+  ctx.font = '28px "Noto Sans KR", sans-serif';
+  ctx.fillText(fitCanvasText(ctx, `${record.companyName} 귀하`, 900), 190, 450);
   const tableTop = 520, headerHeight = 62;
   const columns = [left, 440, 680, 900, right];
   ctx.fillStyle = '#f8fafc'; ctx.fillRect(left, tableTop, right-left, headerHeight);
