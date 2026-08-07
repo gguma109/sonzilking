@@ -96,7 +96,13 @@ export async function onRequestGet({ env, data }) {
     await ensureTable(db);
     await cleanupStatements(db, data.userId);
     await backfillStatements(db, data.userId);
-    const { results } = await db.prepare('SELECT * FROM statements WHERE userId = ? ORDER BY saleDate DESC, updatedAt DESC')
+    const { results } = await db.prepare(`
+      SELECT st.*, s.kilosText, s.kilosTotal, s.addText, s.addTotal,
+        s.commissionRate, s.commissionAmount, s.memo
+      FROM statements st
+      LEFT JOIN sales s ON s.id = st.saleId AND s.userId = st.userId
+      WHERE st.userId = ? ORDER BY st.saleDate DESC, st.updatedAt DESC
+    `)
       .bind(data.userId).all();
     return Response.json({ success: true, data: results }, { headers: CORS });
   } catch (error) {
