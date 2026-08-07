@@ -113,6 +113,17 @@ function getTodayDate() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+function goBackOrHome(event) {
+  if (event) event.preventDefault();
+  if (window.history.length > 1) {
+    window.history.back();
+  } else {
+    window.location.href = 'index.html';
+  }
+}
+
+window.goBackOrHome = goBackOrHome;
+
 // ---- Security ----
 function escapeHtml(str) {
   return String(str || '')

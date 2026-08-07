@@ -298,7 +298,9 @@ body {
   transform: scale(1.08);
 }
 
-.header-logo { height: 32px; filter: brightness(0) invert(1); }
+.header-brand { display: inline-flex; align-items: center; flex-shrink: 0; text-decoration: none; border-radius: 6px; }
+.header-brand:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.header-logo { display: block; width: 113px; height: 36px; object-fit: contain; }
 
 .page-title {
   font-size: 1.15rem;
