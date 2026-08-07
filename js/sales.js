@@ -191,13 +191,16 @@ async function saveSale() {
   btn.textContent = '저장 중...';
 
   try {
+    let savedId = editSalesId;
     if (editSalesId) {
       await API.put(`sales/${editSalesId}`, record);
       showToast('✅ 판매 기록이 수정되었습니다');
     } else {
-      await API.post('sales', record);
+      const response = await API.post('sales', record);
+      savedId = response.data?.id;
       showToast('✅ 판매 기록이 저장되었습니다');
     }
+    if (savedId) await saveStatementSnapshot({ ...record, id: savedId });
     
     resetSalesForm();
     await loadCompanies();
@@ -380,6 +383,7 @@ function openSalesStatement(id) {
   const record = allSalesRecords.find(item => item.id === id);
   if (!record) return;
   statementSalesRecord = record;
+  saveStatementSnapshot(record);
   const items = getStatementItems(record);
   document.getElementById('statement-preview').innerHTML = `
     <div class="statement-title">거 래 명 세 서</div>
@@ -396,6 +400,37 @@ function openSalesStatement(id) {
     ${record.memo ? `<div class="statement-memo">메모: ${escapeHtml(record.memo)}</div>` : ''}
     <div class="statement-footer">총 ${items.length}개 품목 <span>위 금액을 청구합니다.</span></div>`;
   document.getElementById('statement-modal').classList.add('active');
+}
+
+function buildStatementText(record) {
+  const items = getStatementItems(record);
+  const lines = [
+    '거 래 명 세 서',
+    `발급일: ${formatStatementDate(record.date || record.createdAt)}`,
+    `공급받는자: ${record.companyName} 귀하`,
+    `공급자: ${getStatementUserName()}`,
+    '',
+    ...items.map((item, index) => `${index + 1}. ${item.name}${item.description ? ` | ${item.description}` : ''} | ${formatNumber(item.amount)}원`),
+    '',
+    `금일 합계: ${formatNumber(record.total)}원`
+  ];
+  if (record.memo) lines.push(`메모: ${record.memo}`);
+  lines.push('위 금액을 청구합니다.');
+  return lines.join('\n');
+}
+
+async function saveStatementSnapshot(record) {
+  try {
+    await API.post('statements', {
+      saleId: record.id,
+      companyName: record.companyName,
+      saleDate: String(record.date || record.createdAt || getTodayDate()).slice(0, 10),
+      total: Number(record.total) || 0,
+      content: buildStatementText(record)
+    });
+  } catch (error) {
+    console.warn('거래명세서 자동 저장 실패:', error);
+  }
 }
 
 function closeSalesStatement() {
