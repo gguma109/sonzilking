@@ -561,7 +561,9 @@ function formatStatementValue(value) {
 async function getStatementBalance(record) {
   try {
     const response = await API.get(`companies/${encodeURIComponent(record.companyName)}/balance`);
-    return Math.max(0, Number(response.balance) || 0);
+    const companyBalance = Math.max(0, Number(response.balance) || 0);
+    const currentInvoiceAmount = Number(record.unpaid) === 1 ? (Number(record.total) || 0) : 0;
+    return Math.max(0, companyBalance - currentInvoiceAmount);
   } catch (error) {
     console.warn('미수금 조회 실패:', error);
     return null;
