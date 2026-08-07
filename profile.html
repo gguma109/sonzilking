@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>내 정보 - 손질왕</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="page-header">
+    <a href="#" class="btn-back" aria-label="이전 화면" onclick="goBackOrHome(event)">←</a>
+    <a href="index.html" class="header-brand" aria-label="메인 화면"><img src="images/header-logo.svg" alt="손질왕" class="header-logo"></a>
+    <h1 class="page-title">내 정보</h1>
+    <button onclick="logout()" class="btn-del" style="padding:4px 8px;width:auto;font-size:0.8rem;margin-left:auto;">로그아웃</button>
+  </header>
+  <main class="page-body">
+    <section class="records-card profile-card">
+      <form id="profile-form">
+        <div class="form-group"><label for="profile-username">아이디</label><input id="profile-username" class="auth-input" type="text" readonly></div>
+        <div class="form-group"><label for="profile-name">이름</label><input id="profile-name" class="auth-input" type="text" required></div>
+        <div class="form-group"><label for="profile-nickname">닉네임</label><input id="profile-nickname" class="auth-input" type="text"></div>
+        <div class="form-group"><label for="profile-email">복구 이메일</label><input id="profile-email" class="auth-input" type="email"></div>
+        <div class="profile-divider">비밀번호 변경</div>
+        <p class="profile-help">비밀번호를 바꾸지 않으려면 아래 항목은 비워두세요.</p>
+        <div class="form-group"><label for="profile-current-password">현재 비밀번호</label><input id="profile-current-password" class="auth-input" type="password" autocomplete="current-password"></div>
+        <div class="form-group"><label for="profile-new-password">새 비밀번호</label><input id="profile-new-password" class="auth-input" type="password" minlength="4" autocomplete="new-password"></div>
+        <div class="form-group"><label for="profile-confirm-password">새 비밀번호 확인</label><input id="profile-confirm-password" class="auth-input" type="password" minlength="4" autocomplete="new-password"></div>
+        <button type="submit" class="btn-save profile-save-button">회원정보 저장</button>
+      </form>
+    </section>
+  </main>
+  <div class="toast-container" id="toast-container"></div>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/profile.js"></script>
+</body>
+</html>
