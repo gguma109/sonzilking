@@ -3,6 +3,7 @@
 // ===================================================
 
 document.addEventListener('DOMContentLoaded', () => {
+  showAdminMenuIfAllowed();
   // Ripple effect on menu cards
   document.querySelectorAll('.menu-card').forEach(card => {
     card.addEventListener('click', function (e) {
@@ -34,3 +35,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.head.appendChild(style);
   }
 });
+
+async function showAdminMenuIfAllowed() {
+  const adminCard = document.getElementById('btn-admin');
+  if (!adminCard || !localStorage.getItem('token')) return;
+  try {
+    const response = await API.get('admin/users');
+    if (response.isAdmin) adminCard.style.display = '';
+  } catch {
+    adminCard.style.display = 'none';
+  }
+}

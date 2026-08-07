@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>회원 관리 - 손질왕</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="page-header">
+    <a href="#" class="btn-back" aria-label="이전 화면" onclick="goBackOrHome(event)">←</a>
+    <a href="index.html" class="header-brand" aria-label="메인 화면"><img src="images/header-logo.svg" alt="손질왕" class="header-logo"></a>
+    <h1 class="page-title">회원 관리</h1>
+    <button onclick="logout()" class="btn-del" style="padding:4px 8px;width:auto;font-size:0.8rem;margin-left:auto;">로그아웃</button>
+  </header>
+  <main class="page-body">
+    <section class="records-card">
+      <div class="records-header">
+        <div class="records-title">가입 회원</div>
+        <div class="records-count" id="admin-user-count">0명</div>
+      </div>
+      <div id="admin-users-list"><div class="loading"><div class="spinner"></div></div></div>
+    </section>
+  </main>
+  <div class="toast-container" id="toast-container"></div>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

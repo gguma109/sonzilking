@@ -1082,6 +1082,18 @@ body:not(.main-body) button:disabled {
   .calc-row { gap: 5px; }
   .calc-op { font-size: 0.85rem; }
 }
+.admin-user-card { margin-bottom: 12px; }
+.admin-user-details { display: grid; gap: 7px; margin-top: 10px; }
+.admin-user-details > div { display: flex; justify-content: space-between; gap: 16px; font-size: 0.8rem; }
+.admin-user-details span { color: var(--text-muted); }
+.admin-user-details strong { text-align: right; overflow-wrap: anywhere; }
+.admin-usage-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-top: 12px; }
+.admin-usage-grid span { padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: #f8fafc; text-align: center; font-size: 0.75rem; }
+@media (max-width: 480px) {
+  .admin-usage-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-user-details > div { flex-direction: column; gap: 2px; }
+  .admin-user-details strong { text-align: left; }
+}
 /* ===========================
    TABS & NOTEPAD
 =========================== */
