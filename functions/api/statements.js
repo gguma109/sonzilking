@@ -66,6 +66,26 @@ async function backfillStatements(db, userId) {
   await db.batch(statements);
 }
 
+async function cleanupStatements(db, userId) {
+  await db.prepare(`
+    DELETE FROM statements
+    WHERE userId = ?
+      AND saleId NOT IN (SELECT id FROM sales WHERE userId = ?)
+  `).bind(userId, userId).run();
+
+  await db.prepare(`
+    DELETE FROM statements
+    WHERE userId = ? AND id NOT IN (
+      SELECT id FROM (
+        SELECT id, ROW_NUMBER() OVER (
+          PARTITION BY saleId ORDER BY updatedAt DESC, createdAt DESC, id DESC
+        ) AS rowNumber
+        FROM statements WHERE userId = ?
+      ) ranked WHERE rowNumber = 1
+    )
+  `).bind(userId, userId).run();
+}
+
 export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS });
 }
@@ -74,6 +94,7 @@ export async function onRequestGet({ env, data }) {
   try {
     const db = getDB(env);
     await ensureTable(db);
+    await cleanupStatements(db, data.userId);
     await backfillStatements(db, data.userId);
     const { results } = await db.prepare('SELECT * FROM statements WHERE userId = ? ORDER BY saleDate DESC, updatedAt DESC')
       .bind(data.userId).all();
