@@ -31,11 +31,10 @@ export async function onRequestGet({ env, request, params, data }) {
           WHERE userId = ? AND TRIM(LOWER(companyName)) = TRIM(LOWER(?)) AND unpaid = 1
             AND (date < ? OR (date = ? AND createdAt < ? AND id != ?))), 0) -
         COALESCE((SELECT SUM(amount) FROM payments
-          WHERE userId = ? AND TRIM(LOWER(companyName)) = TRIM(LOWER(?))
-            AND substr(createdAt, 1, 10) <= ? AND createdAt < ?), 0) AS balance
+          WHERE userId = ? AND TRIM(LOWER(companyName)) = TRIM(LOWER(?))), 0) AS balance
     `).bind(
       data.userId, companyName, beforeDate, beforeDate, beforeCreatedAt, excludeSaleId,
-      data.userId, companyName, beforeDate, beforeCreatedAt
+      data.userId, companyName
     ).first() : await db.prepare(`
       SELECT
         COALESCE((SELECT SUM(total) FROM sales
