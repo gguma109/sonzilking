@@ -1070,6 +1070,12 @@ body:not(.main-body) button:disabled {
   .calc-input { min-width: 58px; font-size: 0.88rem; }
   .calc-result { min-width: 78px; font-size: 0.82rem; }
   .fab-btn { right: 16px; bottom: 16px; width: 50px; height: 50px; font-size: 1.5rem; }
+  .record-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .record-actions button { width: 100% !important; min-height: 40px; margin: 0 !important; padding: 8px 10px !important; font-size: 0.78rem !important; white-space: nowrap; }
+  .statement-text-card .record-actions { grid-template-columns: 1fr; }
+  .statement-text-card pre { padding: 12px; font-size: 0.78rem; line-height: 1.55; }
+  .statement-modal-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .statement-modal-actions button { width: 100% !important; }
 }
 
 @media (max-width: 360px) {

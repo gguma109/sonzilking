@@ -229,8 +229,8 @@ function renderPurchaseRecords(records) {
       </div>
       ${r.memo ? `<div class="record-memo">📝 ${escapeHtml(r.memo)}</div>` : ''}
       <div class="record-actions">
-        <button class="btn-pay" style="padding: 4px 12px; font-size: 0.72rem; margin-right:4px;" onclick="editPurchaseRecord('${r.id}')">✏️ 편집</button>
-        <button class="btn-delete" onclick="deletePurchaseRecord('${r.id}')">🗑 삭제</button>
+        <button class="btn-pay" style="padding: 4px 12px; font-size: 0.72rem; margin-right:4px;" onclick="editPurchaseRecord('${r.id}')">편집</button>
+        <button class="btn-delete" onclick="deletePurchaseRecord('${r.id}')">삭제</button>
       </div>
     </div>
   `}).join('');

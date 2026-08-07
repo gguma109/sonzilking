@@ -32,9 +32,9 @@ function renderStatements(records) {
       <div class="record-total">총 ${formatNumber(record.total)}원</div>
       <pre>${escapeHtml(record.content)}</pre>
       <div class="record-actions">
-        <button class="btn-pay" onclick="copyStatement('${record.id}')">📋 텍스트 복사</button>
+        <button class="btn-pay" onclick="copyStatement('${record.id}')">텍스트 복사</button>
         <button class="btn-save" onclick="saveStatementImage('${record.id}')">사진으로 저장</button>
-        <button class="btn-delete" onclick="deleteStatement('${record.id}')">🗑 삭제</button>
+        <button class="btn-delete" onclick="deleteStatement('${record.id}')">삭제</button>
       </div>
     </article>`).join('');
 }

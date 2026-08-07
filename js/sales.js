@@ -327,10 +327,10 @@ function renderSalesRecords(records) {
       </div>
       ${r.memo ? `<div class="record-memo">📝 ${escapeHtml(r.memo)}</div>` : ''}
       <div class="record-actions">
-        <button class="btn-pay" style="padding: 4px 12px; font-size: 0.72rem; margin-right:4px;" onclick="openSalesStatement('${r.id}')">📄 거래명세서</button>
-        <button class="btn-pay" style="padding: 4px 12px; font-size: 0.72rem; margin-right:4px;" onclick="copySaleRecord('${r.id}')">📋 복사</button>
-        <button class="btn-pay" style="padding: 4px 12px; font-size: 0.72rem; margin-right:4px;" onclick="editSaleRecord('${r.id}')">✏️ 편집</button>
-        <button class="btn-delete" onclick="deleteSaleRecord('${r.id}')">🗑 삭제</button>
+        <button class="btn-pay" style="padding: 4px 12px; font-size: 0.72rem; margin-right:4px;" onclick="openSalesStatement('${r.id}')">거래명세서</button>
+        <button class="btn-pay" style="padding: 4px 12px; font-size: 0.72rem; margin-right:4px;" onclick="copySaleRecord('${r.id}')">복사</button>
+        <button class="btn-pay" style="padding: 4px 12px; font-size: 0.72rem; margin-right:4px;" onclick="editSaleRecord('${r.id}')">편집</button>
+        <button class="btn-delete" onclick="deleteSaleRecord('${r.id}')">삭제</button>
       </div>
     </div>
   `}).join('');
@@ -791,7 +791,7 @@ function renderUnpaidRecords(records) {
       <div class="record-header">
         <div class="record-company">${safeName}</div>
         <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
-          <button class="btn-pay" style="width:auto; padding:4px 9px; font-size:0.72rem;" onclick="togglePaymentHistory(${index})">✏️ 수납내역 편집</button>
+          <button class="btn-pay" style="width:auto; padding:4px 9px; font-size:0.72rem;" onclick="togglePaymentHistory(${index})">수납내역 편집</button>
           <span style="padding: 4px 9px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; color: white; background: ${isPaid ? 'var(--success)' : 'var(--danger)'};">${isPaid ? '완납' : '미수'}</span>
         </div>
       </div>

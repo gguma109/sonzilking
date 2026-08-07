@@ -48,8 +48,8 @@ function renderNotes(notes) {
       <div class="note-header">
         <div class="note-date">${formatDate(n.createdAt)}</div>
         <div>
-          <button class="btn-pay" style="padding: 4px 8px; font-size: 0.75rem; margin-right:4px;" onclick="copyNoteContent('${n.id}')">📋 복사</button>
-          <button class="btn-close-modal" style="font-size: 1rem;" onclick="deleteNote('${n.id}')">🗑</button>
+          <button class="btn-pay" style="padding: 4px 8px; font-size: 0.75rem; margin-right:4px;" onclick="copyNoteContent('${n.id}')">복사</button>
+          <button class="btn-close-modal" style="font-size: 0.75rem;" onclick="deleteNote('${n.id}')">삭제</button>
         </div>
       </div>
       <div class="note-content" id="note-content-text-${n.id}">${escapeHtml(n.content)}</div>
