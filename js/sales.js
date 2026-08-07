@@ -4,6 +4,7 @@
 
 let allSalesRecords = [];
 let allUnpaidRecords = [];
+let renderedUnpaidRecords = [];
 let editSalesId = null; // 현재 편집 중인 레코드 ID;
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -57,11 +58,14 @@ function calculateSales() {
   const addTotal = parseAndCalculateMath(addText);
   // 수수료 및 총액 계산
   let commissionAmount = 0;
-  let grandTotal = kilosTotal + addTotal;
+  const subtotal = kilosTotal + addTotal;
 
   if (commissionRate > 0) {
-    commissionAmount = grandTotal * (commissionRate / 100);
+    commissionAmount = Math.round(subtotal * (commissionRate / 100));
   }
+
+  // 수수료를 판매대금에 더해 최종 청구 금액에 포함한다.
+  const grandTotal = subtotal + commissionAmount;
 
   // 화면 업데이트
   document.getElementById('preview-kilos').textContent = formatNumber(kilosTotal) + '원';
@@ -257,7 +261,7 @@ function renderSalesRecords(records) {
     if (isOldRecord) {
       detailHTML = `판매액: ${formatNumber(r.kilosTotal)}원
         ${r.addTotal > 0 ? `<br>부대비용: ${formatNumber(r.addTotal)}원` : ''}
-        ${r.commissionRate > 0 ? `<br>수수료 ${r.commissionRate}% (-${formatNumber(r.commissionAmount)}원)` : ''}`;
+        ${r.commissionRate > 0 ? `<br>수수료 ${r.commissionRate}% (+${formatNumber(r.commissionAmount)}원)` : ''}`;
     } else {
       detailHTML = `
         <div style="font-size:0.8rem; color:#555; background:#f5f6f8; padding:8px; border-radius:6px; margin-bottom:6px;">
@@ -341,9 +345,12 @@ async function loadUnpaidRecords() {
 
 function renderUnpaidRecords(records) {
   const container = document.getElementById('records-list-unpaid');
-  document.getElementById('records-count-unpaid').textContent = `${records.length}곳`;
+  renderedUnpaidRecords = records;
+  const unpaidCount = records.filter(r => Number(r.balance) > 0).length;
+  const paidCount = records.length - unpaidCount;
+  document.getElementById('records-count-unpaid').textContent = `미수 ${unpaidCount}곳 · 완납 ${paidCount}곳`;
 
-  const grandTotal = records.reduce((sum, r) => sum + r.balance, 0);
+  const grandTotal = records.reduce((sum, r) => sum + Math.max(0, Number(r.balance) || 0), 0);
   document.getElementById('total-unpaid-amount').textContent = formatNumber(grandTotal);
 
   if (!records.length) {
@@ -351,23 +358,35 @@ function renderUnpaidRecords(records) {
     return;
   }
 
-  container.innerHTML = records.map(r => {
+  container.innerHTML = records.map((r, index) => {
     const safeName = escapeHtml(r.companyName);
+    const totalAmount = Number(r.totalAmount) || 0;
+    const paidAmount = Number(r.paidAmount) || 0;
+    const balance = Math.max(0, Number(r.balance) || 0);
+    const isPaid = balance === 0;
+    const paymentLabel = isPaid ? '수납 합계' : (paidAmount > 0 ? '일부 수납' : '수납 금액');
     return `
-    <div class="record-item" style="border-left: 4px solid var(--danger);">
+    <div class="record-item" style="border-left: 4px solid ${isPaid ? 'var(--success)' : 'var(--danger)'};">
       <div class="record-header">
         <div class="record-company">${safeName}</div>
-        <div class="record-total" style="color: var(--danger); font-size: 1.2rem;">${formatNumber(r.balance)}원</div>
+        <span style="padding: 4px 9px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; color: white; background: ${isPaid ? 'var(--success)' : 'var(--danger)'};">${isPaid ? '완납' : '미수'}</span>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr auto; gap: 6px 16px; margin-top: 10px; font-size: 0.9rem;">
+        <span>총 미수금액</span><strong>${formatNumber(totalAmount)}원</strong>
+        <span>${paymentLabel}</span><strong style="color: var(--success);">${formatNumber(paidAmount)}원</strong>
+        <span>남은 미수금</span><strong style="color: ${isPaid ? 'var(--success)' : 'var(--danger)'}; font-size: 1.05rem;">${formatNumber(balance)}원</strong>
       </div>
       
       <!-- 수납 입력 폼 -->
-      <div style="margin-top: 12px; background: #f8f9fa; padding: 12px; border-radius: 8px;">
+      ${isPaid ? '' : `<div style="margin-top: 12px; background: #f8f9fa; padding: 12px; border-radius: 8px;">
         <div style="font-size: 0.8rem; color: #666; margin-bottom: 6px;">💵 부분 수납 입력</div>
-        <div style="display: flex; gap: 8px;">
-          <input type="number" id="pay-amt-${safeName}" class="form-control" style="padding: 6px 10px;" placeholder="입금액 (원)">
-          <button class="btn-save" style="width: auto; padding: 6px 12px;" onclick="submitPayment('${safeName}')">수납</button>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <input type="number" id="pay-amt-${index}" class="form-control" style="padding: 6px 10px; flex: 1; min-width: 150px;" placeholder="입금액 (원)" min="1" max="${balance}">
+          <button class="btn-save" style="width: auto; padding: 6px 12px;" onclick="submitPayment(${index}, false)">일부 수납</button>
+          <button class="btn-pay" style="width: auto; padding: 6px 12px;" onclick="submitPayment(${index}, true)">완납</button>
         </div>
-      </div>
+      </div>`}
     </div>
   `}).join('');
 }
@@ -378,20 +397,31 @@ function filterUnpaidRecords() {
   renderUnpaidRecords(filtered);
 }
 
-async function submitPayment(companyName) {
-  const input = document.getElementById(`pay-amt-${companyName}`);
-  const amount = parseFloat(input.value);
+async function submitPayment(recordIndex, fullPayment = false) {
+  const record = renderedUnpaidRecords[recordIndex];
+  if (!record) return;
+
+  const companyName = record.companyName;
+  const remainingBalance = Math.max(0, Number(record.balance) || 0);
+  const input = document.getElementById(`pay-amt-${recordIndex}`);
+  const amount = fullPayment ? remainingBalance : parseFloat(input.value);
 
   if (!amount || amount <= 0) {
     showToast('❗ 정확한 수납(입금) 금액을 입력해주세요.', 'error');
     return;
   }
 
-  if (!confirm(`[${companyName}] 업체로부터 ${formatNumber(amount)}원을 수납(입금) 처리하시겠습니까?`)) return;
+  if (amount > remainingBalance) {
+    showToast(`❗ 남은 미수금 ${formatNumber(remainingBalance)}원보다 많이 수납할 수 없습니다.`, 'error');
+    return;
+  }
+
+  const actionLabel = fullPayment ? '완납' : '일부수납';
+  if (!confirm(`[${companyName}] ${formatNumber(amount)}원을 ${actionLabel} 처리하시겠습니까?`)) return;
 
   try {
-    await API.post('payments', { companyName, amount, memo: '부분수납' });
-    showToast('💵 수납이 정상적으로 기록되었습니다.');
+    await API.post('payments', { companyName, amount, memo: actionLabel });
+    showToast(fullPayment ? '✅ 완납 처리되었습니다.' : '💵 일부 수납이 기록되었습니다.');
     await loadUnpaidRecords(); // 뷰 리로드
   } catch (e) {
     showToast('❌ 수납 처리 실패: ' + e.message, 'error');

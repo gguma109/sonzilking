@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>통계 - 손질왕</title>
+  <meta name="description" content="손질왕 매출 및 지출 통계">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="page-header">
+    <a href="index.html" class="btn-back" aria-label="뒤로가기">←</a>
+    <img src="images/logo.png" alt="손질왕" class="header-logo">
+    <h1 class="page-title">통계</h1>
+    <button onclick="logout()" class="btn-del" style="padding: 4px 8px; width:auto; font-size: 0.8rem; margin-left: auto;">로그아웃</button>
+  </header>
+
+  <main class="page-body statistics-page">
+    <section class="statistics-filter" aria-label="통계 조회 조건">
+      <div class="form-group">
+        <label class="form-label" for="statistics-group">집계 기준</label>
+        <select id="statistics-group" class="form-control">
+          <option value="company">거래처별</option>
+          <option value="day">일별</option>
+          <option value="month" selected>월별</option>
+          <option value="quarter">분기별</option>
+          <option value="year">연도별</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="statistics-year">조회 연도</label>
+        <select id="statistics-year" class="form-control"></select>
+      </div>
+    </section>
+
+    <section class="statistics-totals" aria-label="총 금액">
+      <article class="statistics-total-card sales-total-card">
+        <span>총 매출금액</span>
+        <strong><span id="statistics-sales-total">0</span>원</strong>
+      </article>
+      <article class="statistics-total-card purchase-total-card">
+        <span>총 지출금액</span>
+        <strong><span id="statistics-purchase-total">0</span>원</strong>
+      </article>
+      <article class="statistics-total-card net-total-card">
+        <span>매출 - 지출</span>
+        <strong><span id="statistics-net-total">0</span>원</strong>
+      </article>
+    </section>
+
+    <section class="records-card">
+      <div class="records-header">
+        <div class="records-title" id="statistics-list-title">📊 월별 통계</div>
+        <div class="records-count" id="statistics-count">0건</div>
+      </div>
+      <div class="statistics-table-wrap">
+        <table class="statistics-table">
+          <thead>
+            <tr>
+              <th>구분</th>
+              <th>매출</th>
+              <th>지출</th>
+              <th>차액</th>
+            </tr>
+          </thead>
+          <tbody id="statistics-body">
+            <tr><td colspan="4" class="statistics-empty">통계를 불러오는 중입니다.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast-container" id="toast-container"></div>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/statistics.js"></script>
+</body>
+</html>

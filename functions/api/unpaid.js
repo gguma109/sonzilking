@@ -20,17 +20,34 @@ export async function onRequestOptions() {
 export async function onRequestGet({ env, data }) {
   try {
     const db = getDB(env);
-    // 진짜 회계 장부식 계산: (판매 총액) - (수금 총액)
+    // 판매 총액, 누적 수납액, 남은 미수금을 함께 반환한다.
+    // 완납된 업체도 목록에 남겨 상태를 구분할 수 있게 한다.
     const { results } = await db.prepare(`
-      SELECT companyName, SUM(balance) as balance 
-      FROM (
-        SELECT companyName, total as balance FROM sales WHERE userId = ?
+      WITH ledger AS (
+        SELECT companyName, total AS saleAmount, 0 AS paymentAmount
+        FROM sales
+        WHERE userId = ? AND unpaid = 1
         UNION ALL
-        SELECT companyName, -amount as balance FROM payments WHERE userId = ?
+        SELECT companyName, 0 AS saleAmount, amount AS paymentAmount
+        FROM payments
+        WHERE userId = ?
+      ), totals AS (
+        SELECT
+          companyName,
+          SUM(saleAmount) AS totalAmount,
+          SUM(paymentAmount) AS paidAmount
+        FROM ledger
+        GROUP BY companyName
       )
-      GROUP BY companyName 
-      HAVING balance > 0
-      ORDER BY balance DESC, companyName ASC
+      SELECT
+        companyName,
+        totalAmount,
+        paidAmount,
+        CASE WHEN totalAmount - paidAmount > 0 THEN totalAmount - paidAmount ELSE 0 END AS balance,
+        CASE WHEN totalAmount - paidAmount <= 0 THEN 1 ELSE 0 END AS paidInFull
+      FROM totals
+      WHERE totalAmount > 0
+      ORDER BY paidInFull ASC, balance DESC, companyName ASC
     `).bind(data.userId, data.userId).all();
 
     return Response.json(
