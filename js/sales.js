@@ -522,14 +522,16 @@ let statementOutstandingBalance = null;
 function parseStatementItemLine(line) {
   const raw = String(line || '').trim();
   const expression = raw.replace(/\s*=\s*[\d,]+(?:\.\d+)?\s*원?\s*$/, '').trim();
-  const match = expression.match(/^(.*?)\s+([\d,]+(?:\.\d+)?)\s*\*\s*([\d,]+(?:\.\d+)?)\s*$/);
-  const amount = Number(parseAndCalculateMath(expression)) || 0;
+  const match = expression.match(/^(.*?)\s+([\d,]+(?:\.\d+)?\s*(?:kg|킬로|미|개|마리|박스|상자|팩|봉|통|망)?)\s*\*\s*([\d,]+(?:\.\d+)?)\s*원?\s*$/i);
+  const amount = match
+    ? Number(match[2].replace(/[^\d.]/g, '')) * Number(match[3].replace(/,/g, ''))
+    : (Number(parseAndCalculateMath(expression)) || 0);
   if (!match) {
     return { name: expression || '판매품목', quantity: null, unitPrice: null, amount, raw: expression };
   }
   return {
     name: match[1].trim() || '판매품목',
-    quantity: Number(match[2].replace(/,/g, '')),
+    quantity: match[2].replace(/\s+/g, ''),
     unitPrice: Number(match[3].replace(/,/g, '')),
     amount,
     raw: expression
@@ -555,7 +557,9 @@ function getStatementExtras(record) {
 }
 
 function formatStatementValue(value) {
-  return value === null || value === undefined || Number.isNaN(Number(value)) ? '-' : formatNumber(value);
+  if (value === null || value === undefined || value === '') return '-';
+  if (typeof value === 'number') return formatNumber(value);
+  return String(value);
 }
 
 function getStatementGrandTotal(record, balance) {
@@ -564,10 +568,11 @@ function getStatementGrandTotal(record, balance) {
 
 async function getStatementBalance(record) {
   try {
-    const response = await API.get(`companies/${encodeURIComponent(record.companyName)}/balance`);
-    const companyBalance = Math.max(0, Number(response.balance) || 0);
-    const currentInvoiceAmount = Number(record.unpaid) === 1 ? (Number(record.total) || 0) : 0;
-    return Math.max(0, companyBalance - currentInvoiceAmount);
+    const saleDate = String(record.date || record.createdAt || getTodayDate()).slice(0, 10);
+    const cutoff = String(record.createdAt || `${saleDate}T23:59:59.999Z`);
+    const query = new URLSearchParams({ beforeDate: saleDate, beforeCreatedAt: cutoff, excludeSaleId: record.id || '' });
+    const response = await API.get(`companies/${encodeURIComponent(record.companyName)}/balance?${query.toString()}`);
+    return Math.max(0, Number(response.balance) || 0);
   } catch (error) {
     console.warn('미수금 조회 실패:', error);
     return null;
