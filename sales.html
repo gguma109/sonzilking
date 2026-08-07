@@ -34,8 +34,14 @@
     <div id="tab-sales" class="tab-pane active">
       <section class="monthly-summary-card" aria-label="월별 총 매출">
         <div class="monthly-summary-filter">
-          <label class="form-label" for="sales-summary-month">조회 월</label>
+          <label class="form-label" for="sales-summary-period">조회 단위</label>
+          <select id="sales-summary-period" class="form-control summary-period-select">
+            <option value="month">월별</option>
+            <option value="day">일별</option>
+          </select>
+          <label class="form-label summary-date-label" for="sales-summary-month" id="sales-summary-date-label">조회 월</label>
           <input type="month" id="sales-summary-month" class="form-control">
+          <input type="date" id="sales-summary-day" class="form-control" hidden>
         </div>
         <div class="monthly-summary-total sales-summary-total">
           <span id="sales-summary-label">이번 달 총 매출</span>

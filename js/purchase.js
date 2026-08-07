@@ -8,7 +8,10 @@ let editPurchaseId = null; // 현재 편집 중인 레코드 ID
 document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('purchase-date').value = getTodayDate();
   document.getElementById('purchase-summary-month').value = getTodayDate().slice(0, 7);
+  document.getElementById('purchase-summary-day').value = getTodayDate();
+  document.getElementById('purchase-summary-period').addEventListener('change', syncPurchaseSummaryPeriod);
   document.getElementById('purchase-summary-month').addEventListener('change', updateMonthlyPurchaseSummary);
+  document.getElementById('purchase-summary-day').addEventListener('change', updateMonthlyPurchaseSummary);
 
   document.getElementById('calc-kilos-pur').addEventListener('input', calculatePurchase);
   document.getElementById('btn-save-purchase').addEventListener('click', savePurchase);
@@ -164,13 +167,28 @@ async function loadPurchaseRecords() {
 }
 
 function updateMonthlyPurchaseSummary() {
-  const month = document.getElementById('purchase-summary-month').value;
-  const records = allPurchaseRecords.filter(record => String(record.date || record.createdAt || '').slice(0, 7) === month);
+  const period = document.getElementById('purchase-summary-period').value;
+  const selected = document.getElementById(period === 'day' ? 'purchase-summary-day' : 'purchase-summary-month').value;
+  const records = allPurchaseRecords.filter(record => String(record.date || record.createdAt || '').slice(0, period === 'day' ? 10 : 7) === selected);
   const total = records.reduce((sum, record) => sum + (Number(record.total) || 0), 0);
-  const [year, monthNumber] = month.split('-');
-  document.getElementById('purchase-summary-label').textContent = `${year}년 ${Number(monthNumber)}월 총 지출`;
+  const [year, monthNumber, day] = selected.split('-');
+  document.getElementById('purchase-summary-label').textContent = period === 'day'
+    ? `${year}년 ${Number(monthNumber)}월 ${Number(day)}일 총 지출`
+    : `${year}년 ${Number(monthNumber)}월 총 지출`;
   document.getElementById('purchase-summary-amount').textContent = formatNumber(total);
   document.getElementById('purchase-summary-count').textContent = `${records.length}건`;
+}
+
+function syncPurchaseSummaryPeriod() {
+  const isDay = document.getElementById('purchase-summary-period').value === 'day';
+  const monthInput = document.getElementById('purchase-summary-month');
+  const dayInput = document.getElementById('purchase-summary-day');
+  monthInput.hidden = isDay;
+  dayInput.hidden = !isDay;
+  const label = document.getElementById('purchase-summary-date-label');
+  label.textContent = isDay ? '조회 날짜' : '조회 월';
+  label.htmlFor = isDay ? 'purchase-summary-day' : 'purchase-summary-month';
+  updateMonthlyPurchaseSummary();
 }
 
 // ---- 기록 렌더링 ----

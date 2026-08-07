@@ -659,6 +659,8 @@ body {
 }
 
 .monthly-summary-filter .form-label { margin-bottom: 7px; }
+.summary-period-select { margin-bottom: 12px; }
+.summary-date-label { display: block; }
 .monthly-summary-total { display: flex; flex-direction: column; justify-content: center; gap: 3px; color: #fff; }
 .monthly-summary-total > span { font-size: 0.8rem; opacity: 0.92; }
 .monthly-summary-total strong { font-size: 1.35rem; }

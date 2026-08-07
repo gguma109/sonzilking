@@ -11,7 +11,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 기본 날짜
   document.getElementById('sale-date').value = getTodayDate();
   document.getElementById('sales-summary-month').value = getTodayDate().slice(0, 7);
+  document.getElementById('sales-summary-day').value = getTodayDate();
+  document.getElementById('sales-summary-period').addEventListener('change', syncSalesSummaryPeriod);
   document.getElementById('sales-summary-month').addEventListener('change', updateMonthlySalesSummary);
+  document.getElementById('sales-summary-day').addEventListener('change', updateMonthlySalesSummary);
 
   // 계산기 텍스트 에어리어 이벤트
   ['calc-kilos', 'calc-add', 'commission-rate'].forEach(id => {
@@ -248,13 +251,28 @@ async function loadSalesRecords() {
 }
 
 function updateMonthlySalesSummary() {
-  const month = document.getElementById('sales-summary-month').value;
-  const records = allSalesRecords.filter(record => String(record.date || record.createdAt || '').slice(0, 7) === month);
+  const period = document.getElementById('sales-summary-period').value;
+  const selected = document.getElementById(period === 'day' ? 'sales-summary-day' : 'sales-summary-month').value;
+  const records = allSalesRecords.filter(record => String(record.date || record.createdAt || '').slice(0, period === 'day' ? 10 : 7) === selected);
   const total = records.reduce((sum, record) => sum + (Number(record.total) || 0), 0);
-  const [year, monthNumber] = month.split('-');
-  document.getElementById('sales-summary-label').textContent = `${year}년 ${Number(monthNumber)}월 총 매출`;
+  const [year, monthNumber, day] = selected.split('-');
+  document.getElementById('sales-summary-label').textContent = period === 'day'
+    ? `${year}년 ${Number(monthNumber)}월 ${Number(day)}일 총 매출`
+    : `${year}년 ${Number(monthNumber)}월 총 매출`;
   document.getElementById('sales-summary-amount').textContent = formatNumber(total);
   document.getElementById('sales-summary-count').textContent = `${records.length}건`;
+}
+
+function syncSalesSummaryPeriod() {
+  const isDay = document.getElementById('sales-summary-period').value === 'day';
+  const monthInput = document.getElementById('sales-summary-month');
+  const dayInput = document.getElementById('sales-summary-day');
+  monthInput.hidden = isDay;
+  dayInput.hidden = !isDay;
+  const label = document.getElementById('sales-summary-date-label');
+  label.textContent = isDay ? '조회 날짜' : '조회 월';
+  label.htmlFor = isDay ? 'sales-summary-day' : 'sales-summary-month';
+  updateMonthlySalesSummary();
 }
 
 function renderSalesRecords(records) {

@@ -33,8 +33,14 @@
     <div id="tab-purchase" class="tab-pane active">
       <section class="monthly-summary-card" aria-label="월별 총 지출">
         <div class="monthly-summary-filter">
-          <label class="form-label" for="purchase-summary-month">조회 월</label>
+          <label class="form-label" for="purchase-summary-period">조회 단위</label>
+          <select id="purchase-summary-period" class="form-control summary-period-select">
+            <option value="month">월별</option>
+            <option value="day">일별</option>
+          </select>
+          <label class="form-label summary-date-label" for="purchase-summary-month" id="purchase-summary-date-label">조회 월</label>
           <input type="month" id="purchase-summary-month" class="form-control">
+          <input type="date" id="purchase-summary-day" class="form-control" hidden>
         </div>
         <div class="monthly-summary-total purchase-summary-total">
           <span id="purchase-summary-label">이번 달 총 지출</span>
