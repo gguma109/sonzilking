@@ -45,10 +45,11 @@ body {
   background: #ffffff;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   min-height: 100vh;
   padding: 24px 20px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   position: relative;
 }
 
@@ -86,6 +87,7 @@ body {
   position: relative;
   width: 100%;
   max-width: 480px;
+  margin: auto 0;
 }
 
 /* Logo */
@@ -97,7 +99,7 @@ body {
 }
 
 .main-logo {
-  width: 300px;
+  width: 220px;
   max-width: 80vw;
   animation: float 4s ease-in-out infinite;
   position: relative;
@@ -107,8 +109,8 @@ body {
 
 .logo-glow {
   position: absolute;
-  width: 340px;
-  height: 340px;
+  width: 260px;
+  height: 260px;
   background: radial-gradient(circle, rgba(40, 86, 180, 0.03) 0%, transparent 65%);
   border-radius: 50%;
   animation: glow-pulse 3s ease-in-out infinite;
@@ -974,7 +976,7 @@ body {
   .menu-card { padding: 26px 14px 22px; }
   .menu-icon { font-size: 2.2rem; }
   .menu-title { font-size: 1.3rem; }
-  .main-logo { width: 240px; }
+  .main-logo { width: 190px; }
   .total-amount { font-size: 1.5rem; }
   .calc-input { min-width: 58px; font-size: 0.88rem; }
   .calc-result { min-width: 78px; font-size: 0.82rem; }
