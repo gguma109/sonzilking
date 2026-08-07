@@ -638,6 +638,35 @@ body {
 .statistics-filter .form-group { margin-bottom: 0; }
 .statistics-company-filter { grid-column: 1 / -1; }
 
+.monthly-summary-card {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(0, 1.4fr);
+  gap: 14px;
+  align-items: stretch;
+  margin-bottom: 18px;
+}
+
+.monthly-summary-filter,
+.monthly-summary-total {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 15px;
+}
+
+.monthly-summary-filter .form-label { margin-bottom: 7px; }
+.monthly-summary-total { display: flex; flex-direction: column; justify-content: center; gap: 3px; color: #fff; }
+.monthly-summary-total > span { font-size: 0.8rem; opacity: 0.92; }
+.monthly-summary-total strong { font-size: 1.35rem; }
+.monthly-summary-total small { opacity: 0.85; }
+.sales-summary-total { background: linear-gradient(135deg, #2563eb, #3b82f6); }
+.purchase-summary-total { background: linear-gradient(135deg, #d97706, #f59e0b); }
+
+@media (max-width: 520px) {
+  .monthly-summary-card { grid-template-columns: 1fr; }
+}
+
 .statistics-totals {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

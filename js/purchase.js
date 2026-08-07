@@ -7,6 +7,8 @@ let editPurchaseId = null; // 현재 편집 중인 레코드 ID
 
 document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('purchase-date').value = getTodayDate();
+  document.getElementById('purchase-summary-month').value = getTodayDate().slice(0, 7);
+  document.getElementById('purchase-summary-month').addEventListener('change', updateMonthlyPurchaseSummary);
 
   document.getElementById('calc-kilos-pur').addEventListener('input', calculatePurchase);
   document.getElementById('btn-save-purchase').addEventListener('click', savePurchase);
@@ -154,10 +156,21 @@ async function loadPurchaseRecords() {
   try {
     const data = await API.get('purchases');
     allPurchaseRecords = data.data || [];
+    updateMonthlyPurchaseSummary();
     renderPurchaseRecords(allPurchaseRecords);
   } catch {
     container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">기록을 불러올 수 없습니다</div></div>`;
   }
+}
+
+function updateMonthlyPurchaseSummary() {
+  const month = document.getElementById('purchase-summary-month').value;
+  const records = allPurchaseRecords.filter(record => String(record.date || record.createdAt || '').slice(0, 7) === month);
+  const total = records.reduce((sum, record) => sum + (Number(record.total) || 0), 0);
+  const [year, monthNumber] = month.split('-');
+  document.getElementById('purchase-summary-label').textContent = `${year}년 ${Number(monthNumber)}월 총 지출`;
+  document.getElementById('purchase-summary-amount').textContent = formatNumber(total);
+  document.getElementById('purchase-summary-count').textContent = `${records.length}건`;
 }
 
 // ---- 기록 렌더링 ----
@@ -223,4 +236,3 @@ async function deletePurchaseRecord(id) {
     showToast('❌ 삭제 실패: ' + e.message, 'error');
   }
 }
-

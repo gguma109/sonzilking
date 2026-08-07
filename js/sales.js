@@ -10,6 +10,8 @@ let editSalesId = null; // 현재 편집 중인 레코드 ID;
 document.addEventListener('DOMContentLoaded', async () => {
   // 기본 날짜
   document.getElementById('sale-date').value = getTodayDate();
+  document.getElementById('sales-summary-month').value = getTodayDate().slice(0, 7);
+  document.getElementById('sales-summary-month').addEventListener('change', updateMonthlySalesSummary);
 
   // 계산기 텍스트 에어리어 이벤트
   ['calc-kilos', 'calc-add', 'commission-rate'].forEach(id => {
@@ -238,10 +240,21 @@ async function loadSalesRecords() {
   try {
     const data = await API.get('sales');
     allSalesRecords = data.data || [];
+    updateMonthlySalesSummary();
     renderSalesRecords(allSalesRecords);
   } catch {
     container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">기록을 불러올 수 없습니다</div></div>`;
   }
+}
+
+function updateMonthlySalesSummary() {
+  const month = document.getElementById('sales-summary-month').value;
+  const records = allSalesRecords.filter(record => String(record.date || record.createdAt || '').slice(0, 7) === month);
+  const total = records.reduce((sum, record) => sum + (Number(record.total) || 0), 0);
+  const [year, monthNumber] = month.split('-');
+  document.getElementById('sales-summary-label').textContent = `${year}년 ${Number(monthNumber)}월 총 매출`;
+  document.getElementById('sales-summary-amount').textContent = formatNumber(total);
+  document.getElementById('sales-summary-count').textContent = `${records.length}건`;
 }
 
 function renderSalesRecords(records) {

@@ -32,6 +32,17 @@
          TAB 1: 판매 관리
     ========================= -->
     <div id="tab-sales" class="tab-pane active">
+      <section class="monthly-summary-card" aria-label="월별 총 매출">
+        <div class="monthly-summary-filter">
+          <label class="form-label" for="sales-summary-month">조회 월</label>
+          <input type="month" id="sales-summary-month" class="form-control">
+        </div>
+        <div class="monthly-summary-total sales-summary-total">
+          <span id="sales-summary-label">이번 달 총 매출</span>
+          <strong><span id="sales-summary-amount">0</span>원</strong>
+          <small id="sales-summary-count">0건</small>
+        </div>
+      </section>
       <!-- 미수금 ALERT -->
       <div class="alert-unpaid" id="alert-unpaid" style="display:none" role="alert">
         <div class="alert-icon">⚠️</div>

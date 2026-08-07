@@ -31,6 +31,17 @@
          TAB 1: 수매 관리
     ========================= -->
     <div id="tab-purchase" class="tab-pane active">
+      <section class="monthly-summary-card" aria-label="월별 총 지출">
+        <div class="monthly-summary-filter">
+          <label class="form-label" for="purchase-summary-month">조회 월</label>
+          <input type="month" id="purchase-summary-month" class="form-control">
+        </div>
+        <div class="monthly-summary-total purchase-summary-total">
+          <span id="purchase-summary-label">이번 달 총 지출</span>
+          <strong><span id="purchase-summary-amount">0</span>원</strong>
+          <small id="purchase-summary-count">0건</small>
+        </div>
+      </section>
       <!-- 모달 오버레이 (수매 입력 폼) -->
       <div class="modal-overlay" id="form-modal">
         <div class="form-card modal-content">
