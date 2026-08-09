@@ -525,7 +525,6 @@ function saveSalesStatementImage() {
 }
 
 let statementOutstandingBalance = null;
-let statementRemainingBalance = null;
 
 function parseStatementItemLine(line) {
   const raw = String(line || '').trim();
@@ -587,29 +586,16 @@ async function getStatementBalance(record) {
   }
 }
 
-async function getCurrentCompanyBalance(companyName) {
-  try {
-    const response = await API.get(`companies/${encodeURIComponent(companyName)}/balance`);
-    return Math.max(0, Number(response.balance) || 0);
-  } catch (error) {
-    console.warn('현재 미수금 조회 실패:', error);
-    return null;
-  }
-}
-
 async function openSalesStatement(id) {
   const record = allSalesRecords.find(item => item.id === id);
   if (!record) return;
   statementSalesRecord = record;
-  [statementOutstandingBalance, statementRemainingBalance] = await Promise.all([
-    getStatementBalance(record),
-    getCurrentCompanyBalance(record.companyName)
-  ]);
-  await saveStatementSnapshot(record, statementOutstandingBalance, statementRemainingBalance);
+  statementOutstandingBalance = await getStatementBalance(record);
+  await saveStatementSnapshot(record, statementOutstandingBalance);
   const items = getStatementItems(record);
   const extras = getStatementExtras(record);
   const supplier = getStatementSupplier();
-  const balanceText = statementRemainingBalance === null ? '확인 불가' : `${formatNumber(statementRemainingBalance)}원`;
+  const balanceText = statementOutstandingBalance === null ? '확인 불가' : `${formatNumber(statementOutstandingBalance)}원`;
   const grandTotal = getStatementGrandTotal(record, statementOutstandingBalance);
   document.getElementById('statement-preview').innerHTML = `
     <div class="statement-title">거 래 명 세 서</div>
@@ -629,15 +615,16 @@ async function openSalesStatement(id) {
     <div class="statement-breakdown">
       <div><span>부대비용</span><strong>${extras.addText ? `${escapeHtml(extras.addText)} = ` : ''}${formatNumber(extras.addAmount)}원</strong></div>
       <div><span>수수료</span><strong>${formatNumber(extras.commissionRate)}% = ${formatNumber(extras.commissionAmount)}원</strong></div>
-      <div><span>기존 미수금</span><strong>${balanceText}</strong></div>
+      <div><span>합계</span><strong>${formatNumber(record.total)}원</strong></div>
+      <div><span>미수금</span><strong>${balanceText}</strong></div>
     </div>
-    <div class="statement-grand-total"><span>청구 합계</span><strong>${formatNumber(grandTotal)}원</strong></div>
+    <div class="statement-grand-total"><span>총합계</span><strong>${formatNumber(grandTotal)}원</strong></div>
     ${record.memo ? `<div class="statement-memo">메모: ${escapeHtml(record.memo)}</div>` : ''}
     <div class="statement-footer"><small>위 금액을 청구합니다.</small></div>`;
   document.getElementById('statement-modal').classList.add('active');
 }
 
-function buildStatementText(record, balance = null, remainingBalance = null) {
+function buildStatementText(record, balance = null) {
   const items = getStatementItems(record);
   const extras = getStatementExtras(record);
   const supplier = getStatementSupplier();
@@ -658,9 +645,10 @@ function buildStatementText(record, balance = null, remainingBalance = null) {
     '--------------------------------------------------',
     `부대비용: ${extras.addText ? `${extras.addText} = ` : ''}${formatNumber(extras.addAmount)}원`,
     `수수료: ${formatNumber(extras.commissionRate)}% = ${formatNumber(extras.commissionAmount)}원`,
-    `기존 미수금: ${remainingBalance === null ? '확인 불가' : `${formatNumber(remainingBalance)}원`}`,
+    `합계: ${formatNumber(record.total)}원`,
+    `미수금: ${balance === null ? '확인 불가' : `${formatNumber(balance)}원`}`,
     '--------------------------------------------------',
-    `청구 합계: ${formatNumber(grandTotal)}원`,
+    `총합계: ${formatNumber(grandTotal)}원`,
     '',
     '위 금액을 청구합니다.'
   ];
@@ -668,19 +656,16 @@ function buildStatementText(record, balance = null, remainingBalance = null) {
   return lines.join('\n');
 }
 
-async function saveStatementSnapshot(record, suppliedBalance, suppliedRemainingBalance) {
+async function saveStatementSnapshot(record, suppliedBalance) {
   try {
-    const [balance, remainingBalance] = await Promise.all([
-      suppliedBalance === undefined ? getStatementBalance(record) : suppliedBalance,
-      suppliedRemainingBalance === undefined ? getCurrentCompanyBalance(record.companyName) : suppliedRemainingBalance
-    ]);
+    const balance = suppliedBalance === undefined ? await getStatementBalance(record) : suppliedBalance;
     const grandTotal = getStatementGrandTotal(record, balance);
     await API.post('statements', {
       saleId: record.id,
       companyName: record.companyName,
       saleDate: String(record.date || record.createdAt || getTodayDate()).slice(0, 10),
       total: grandTotal,
-      content: buildStatementText(record, balance, remainingBalance)
+      content: buildStatementText(record, balance)
     });
     return true;
   } catch (error) {
@@ -695,10 +680,9 @@ async function refreshSalesStatementsForCompany(companyName) {
   const companyRecords = allSalesRecords.filter(record =>
     String(record.companyName || '').trim() === normalizedCompanyName
   );
-  const remainingBalance = await getCurrentCompanyBalance(normalizedCompanyName);
   await Promise.all(companyRecords.map(async record => {
     const balance = await getStatementBalance(record);
-    await saveStatementSnapshot(record, balance, remainingBalance);
+    await saveStatementSnapshot(record, balance);
   }));
 }
 
@@ -756,12 +740,13 @@ function saveSalesStatementImage() {
   const breakdown = [
     ['부대비용', `${extras.addText ? `${extras.addText} = ` : ''}${formatNumber(extras.addAmount)}원`],
     ['수수료', `${formatNumber(extras.commissionRate)}% = ${formatNumber(extras.commissionAmount)}원`],
-    ['기존 미수금', statementRemainingBalance===null?'확인 불가':`${formatNumber(statementRemainingBalance)}원`]
+    ['합계', `${formatNumber(record.total)}원`],
+    ['미수금', statementOutstandingBalance===null?'확인 불가':`${formatNumber(statementOutstandingBalance)}원`]
   ];
   ctx.font='24px "Noto Sans KR", sans-serif';
   breakdown.forEach(([label,value]) => { y+=48; ctx.fillStyle='#4b5563'; ctx.textAlign='left'; ctx.fillText(label,left,y); ctx.fillStyle='#111827'; ctx.textAlign='right'; ctx.fillText(fitCanvasText(ctx,value,850),right,y); });
   y+=35; ctx.setLineDash([8,8]); ctx.strokeStyle='#9ca3af'; ctx.beginPath(); ctx.moveTo(left,y); ctx.lineTo(right,y); ctx.stroke(); ctx.setLineDash([]);
-  y+=65; ctx.fillStyle='#111827'; ctx.textAlign='left'; ctx.font='700 30px "Noto Sans KR", sans-serif'; ctx.fillText('청구 합계',left,y);
+  y+=65; ctx.fillStyle='#111827'; ctx.textAlign='left'; ctx.font='700 30px "Noto Sans KR", sans-serif'; ctx.fillText('총합계',left,y);
   ctx.fillStyle='#1769aa'; ctx.textAlign='right'; ctx.font='700 38px "Noto Sans KR", sans-serif'; ctx.fillText(`${formatNumber(grandTotal)}원`,right,y);
   y+=62; ctx.fillStyle='#6b7280'; ctx.textAlign='right'; ctx.font='20px "Noto Sans KR", sans-serif'; ctx.fillText('위 금액을 청구합니다.',right,y);
   const link=document.createElement('a');
