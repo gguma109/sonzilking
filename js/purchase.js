@@ -85,13 +85,16 @@ async function savePurchase() {
   btn.textContent = '저장 중...';
 
   try {
+    let savedId = editPurchaseId;
     if (editPurchaseId) {
       await API.put(`purchases/${editPurchaseId}`, record);
       showToast('✅ 수매 기록이 수정되었습니다');
     } else {
-      await API.post('purchases', record);
+      const response = await API.post('purchases', record);
+      savedId = response.data?.id;
       showToast('✅ 수매 기록이 저장되었습니다');
     }
+    if (savedId) await savePurchaseStatementSnapshot(savedId);
 
     resetPurchaseForm();
     await loadCompanies();
@@ -220,11 +223,31 @@ function renderPurchaseRecords(records) {
       </div>
       ${r.memo ? `<div class="record-memo">📝 ${escapeHtml(r.memo)}</div>` : ''}
       <div class="record-actions">
+        <button class="btn-pay" style="padding: 4px 12px; font-size: 0.72rem; margin-right:4px;" onclick="openPurchaseStatement('${r.id}')">거래명세서</button>
         <button class="btn-pay" style="padding: 4px 12px; font-size: 0.72rem; margin-right:4px;" onclick="editPurchaseRecord('${r.id}')">편집</button>
         <button class="btn-delete" onclick="deletePurchaseRecord('${r.id}')">삭제</button>
       </div>
     </div>
   `}).join('');
+}
+
+async function savePurchaseStatementSnapshot(id) {
+  try {
+    return await API.post('statements', { statementType: 'purchase', sourceId: id });
+  } catch (error) {
+    console.warn('수매 거래명세서 자동 저장 실패:', error);
+    return null;
+  }
+}
+
+async function openPurchaseStatement(id) {
+  const response = await savePurchaseStatementSnapshot(id);
+  if (!response?.id) {
+    showToast('거래명세서를 만들지 못했습니다.', 'error');
+    return;
+  }
+  sessionStorage.setItem('statement-focus-id', response.id);
+  window.location.href = 'statements.html';
 }
 
 // ---- 검색 ----

@@ -23,6 +23,14 @@
         <div class="records-title">📄 거래명세서 텍스트 보관함</div>
         <div class="records-count" id="statements-count">0건</div>
       </div>
+      <div class="statement-list-filter">
+        <label for="statements-type">구분</label>
+        <select id="statements-type" class="form-control">
+          <option value="all">전체</option>
+          <option value="sale">판매</option>
+          <option value="purchase">수매</option>
+        </select>
+      </div>
       <input type="text" class="records-search" id="statements-search" placeholder="🔍 거래처명으로 검색...">
       <div id="statements-list"><div class="loading"><div class="spinner"></div></div></div>
     </section>

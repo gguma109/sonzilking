@@ -89,9 +89,17 @@ export async function onRequestPut({ request, env, data }) {
       }
       results = await db.batch(updates);
     } else {
-      results = await db.batch([
+      const updates = [
         db.prepare('UPDATE purchases SET companyName = ? WHERE userId = ? AND companyName = ?').bind(newName, data.userId, oldName)
-      ]);
+      ];
+      const statementsTable = await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'statements'").first();
+      if (statementsTable) {
+        updates.push(
+          db.prepare("UPDATE statements SET companyName = ?, content = REPLACE(content, ?, ?), updatedAt = ? WHERE userId = ? AND companyName = ? AND saleId LIKE 'purchase:%'")
+            .bind(newName, oldName, newName, new Date().toISOString(), data.userId, oldName)
+        );
+      }
+      results = await db.batch(updates);
     }
 
     const updated = results.reduce((sum, result) => sum + (Number(result.meta?.changes) || 0), 0);

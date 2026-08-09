@@ -665,9 +665,23 @@ async function saveStatementSnapshot(record, suppliedBalance) {
       total: grandTotal,
       content: buildStatementText(record, balance)
     });
+    return true;
   } catch (error) {
     console.warn('거래명세서 자동 저장 실패:', error);
+    return false;
   }
+}
+
+async function refreshSalesStatementsForCompany(companyName) {
+  const normalizedCompanyName = String(companyName || '').trim();
+  if (!normalizedCompanyName) return;
+  const companyRecords = allSalesRecords.filter(record =>
+    String(record.companyName || '').trim() === normalizedCompanyName
+  );
+  await Promise.all(companyRecords.map(async record => {
+    const balance = await getStatementBalance(record);
+    await saveStatementSnapshot(record, balance);
+  }));
 }
 
 function saveSalesStatementImage() {
@@ -888,7 +902,8 @@ async function updatePayment(id) {
     return;
   }
   try {
-    await API.put(`payments/${id}`, { amount });
+    const response = await API.put(`payments/${id}`, { amount });
+    await refreshSalesStatementsForCompany(response.companyName);
     showToast('✅ 수납 금액을 수정했습니다.');
     await loadUnpaidRecords();
   } catch (error) {
@@ -899,7 +914,8 @@ async function updatePayment(id) {
 async function deletePayment(id) {
   if (!confirm('이 수납 기록을 삭제하시겠습니까?')) return;
   try {
-    await API.del('payments', id);
+    const response = await API.del('payments', id);
+    await refreshSalesStatementsForCompany(response.companyName);
     showToast('🗑️ 수납 기록을 삭제했습니다.');
     await loadUnpaidRecords();
   } catch (error) {
@@ -931,6 +947,7 @@ async function submitPayment(recordIndex, fullPayment = false) {
 
   try {
     await API.post('payments', { companyName, amount, memo: actionLabel });
+    await refreshSalesStatementsForCompany(companyName);
     showToast(fullPayment ? '✅ 완납 처리되었습니다.' : '💵 일부 수납이 기록되었습니다.');
     await loadUnpaidRecords(); // 뷰 리로드
   } catch (e) {

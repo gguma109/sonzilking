@@ -4,6 +4,7 @@ let statementProfile = {};
 
 document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('statements-search').addEventListener('input', filterStatements);
+  document.getElementById('statements-type').addEventListener('change', filterStatements);
   document.getElementById('close-statement-image-preview').addEventListener('click', closeStatementImagePreview);
   document.getElementById('save-previewed-statement').addEventListener('click', () => saveStatementImage(previewStatementId));
   document.getElementById('statement-image-preview-modal').addEventListener('click', event => {
@@ -18,7 +19,8 @@ async function loadStatements() {
     const [response, profileResponse] = await Promise.all([API.get('statements'), API.get('profile')]);
     statementProfile = profileResponse.user || {};
     allStatements = (response.data || []).map(record => ({ ...record, content: normalizeStatementContent(record.content) }));
-    renderStatements(allStatements);
+    filterStatements();
+    focusRequestedStatement();
   } catch (error) {
     container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">거래명세서를 불러오지 못했습니다.<br>${escapeHtml(error.message)}</div></div>`;
   }
@@ -28,13 +30,13 @@ function renderStatements(records) {
   document.getElementById('statements-count').textContent = `${records.length}건`;
   const container = document.getElementById('statements-list');
   if (!records.length) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📄</div><div class="empty-text">저장된 거래명세서가 없습니다.<br>판매 기록을 저장하면 자동으로 생성됩니다.</div></div>';
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📄</div><div class="empty-text">저장된 거래명세서가 없습니다.<br>판매·수매 기록을 저장하면 자동으로 생성됩니다.</div></div>';
     return;
   }
   container.innerHTML = records.map(record => `
-    <article class="record-item statement-text-card">
+    <article class="record-item statement-text-card" id="statement-${record.id}">
       <div class="record-header">
-        <div class="record-company">${escapeHtml(record.companyName)}</div>
+        <div class="record-company"><span class="statement-type-badge ${record.statementType === 'purchase' ? 'purchase' : ''}">${record.statementType === 'purchase' ? '수매' : '판매'}</span>${escapeHtml(record.companyName)}</div>
         <div class="record-date">${formatDate(record.saleDate)}</div>
       </div>
       <div class="record-total">총 ${formatNumber(record.total)}원</div>
@@ -50,7 +52,7 @@ function renderStatements(records) {
 
 function normalizeStatementContent(content) {
   const lines = String(content || '').replace(/(^|\n)미수금:/g, '$1기존 미수금:').split(/\r?\n/);
-  const isReceiver = line => /^공급받는자\s*:/.test(line.trim());
+  const isReceiver = line => /^공급받는자(?:\s+상호)?\s*:/.test(line.trim());
   const isSupplier = line => /^(공급자(?:\s+(?:상호|성명))?\s*:|등록번호\s*:|이메일\s*:|휴대번호\s*:|계좌번호\s*:)/.test(line.trim());
   const identityIndexes = [];
   const supplierLines = [];
@@ -68,7 +70,25 @@ function normalizeStatementContent(content) {
 
 function filterStatements() {
   const query = document.getElementById('statements-search').value.trim().toLowerCase();
-  renderStatements(query ? allStatements.filter(record => record.companyName.toLowerCase().includes(query)) : allStatements);
+  const type = document.getElementById('statements-type').value;
+  const filtered = allStatements.filter(record => {
+    const matchesType = type === 'all' || record.statementType === type;
+    const matchesQuery = !query || String(record.companyName || '').toLowerCase().includes(query);
+    return matchesType && matchesQuery;
+  });
+  renderStatements(filtered);
+}
+
+function focusRequestedStatement() {
+  const id = sessionStorage.getItem('statement-focus-id');
+  if (!id) return;
+  sessionStorage.removeItem('statement-focus-id');
+  requestAnimationFrame(() => {
+    const card = document.getElementById(`statement-${id}`);
+    if (!card) return;
+    card.classList.add('statement-focused');
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
 }
 
 function copyStatement(id) {
@@ -134,11 +154,13 @@ function createStatementCanvas(record) {
 
 function getFormalStatementItems(record) {
   const lines = String(record.kilosText || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-  if (!lines.length) return [{ name: '판매품목', quantity: '-', unitPrice: '-', amount: Number(record.kilosTotal) || 0 }];
-  return lines.map(line => {
+  const fallbackAmount = Number(record.kilosTotal) || Number(record.total) || 0;
+  const fallbackName = record.statementType === 'purchase' ? '수매품목' : '판매품목';
+  if (!lines.length) return [{ name: fallbackName, quantity: '-', unitPrice: '-', amount: fallbackAmount }];
+  return lines.map((line, index) => {
     const expression = line.replace(/\s*=\s*[\d,]+(?:\.\d+)?\s*원?\s*$/, '').trim();
     const match = expression.match(/^(.*?)\s+([\d,]+(?:\.\d+)?\s*(?:kg|킬로|미|개|마리|박스|상자|팩|봉|통|망)?)\s*\*\s*([\d,]+(?:\.\d+)?)\s*원?\s*$/i);
-    if (!match) return { name: expression || '판매품목', quantity: '-', unitPrice: '-', amount: 0 };
+    if (!match) return { name: expression || fallbackName, quantity: '-', unitPrice: '-', amount: lines.length === 1 && index === 0 ? fallbackAmount : 0 };
     const quantityNumber = Number(match[2].replace(/[^\d.]/g, ''));
     const unitPrice = Number(match[3].replace(/,/g, ''));
     return { name: match[1].trim(), quantity: match[2].replace(/\s+/g, ''), unitPrice, amount: quantityNumber * unitPrice };
@@ -160,6 +182,7 @@ function canvasFitText(ctx, text, maxWidth) {
 
 function createFormalStatementCanvas(record) {
   const items = getFormalStatementItems(record);
+  const isPurchase = record.statementType === 'purchase';
   const width = 1200, rowHeight = 82, height = 1010 + items.length * rowHeight;
   const canvas = document.createElement('canvas');
   canvas.width = width; canvas.height = height;
@@ -167,19 +190,31 @@ function createFormalStatementCanvas(record) {
   const left = 42, right = width - 42;
   ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height);
   ctx.strokeStyle = '#111827'; ctx.lineWidth = 4; ctx.strokeRect(12, 12, width - 24, height - 24);
-  ctx.fillStyle = '#111827'; ctx.textAlign = 'center'; ctx.font = '500 44px "Noto Sans KR", sans-serif'; ctx.fillText('거 래 명 세 서', width / 2, 85);
+  ctx.fillStyle = '#111827'; ctx.textAlign = 'center'; ctx.font = '500 44px "Noto Sans KR", sans-serif'; ctx.fillText(isPurchase ? '수 매 거 래 명 세 서' : '거 래 명 세 서', width / 2, 85);
   ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(left, 120); ctx.lineTo(right, 120); ctx.stroke();
   ctx.textAlign = 'right'; ctx.fillStyle = '#4b5563'; ctx.font = '24px "Noto Sans KR", sans-serif'; ctx.fillText(`발급일: ${statementDateLabel(record.saleDate)}`, right, 165);
   const partyTop = 195, partyMid = 395, partyBottom = 485, labelRight = 170;
   ctx.strokeStyle = '#111827'; ctx.lineWidth = 2; ctx.strokeRect(left, partyTop, right-left, partyBottom-partyTop);
   ctx.beginPath(); ctx.moveTo(labelRight, partyTop); ctx.lineTo(labelRight, partyBottom); ctx.moveTo(left, partyMid); ctx.lineTo(right, partyMid); ctx.stroke();
   ctx.textAlign='center'; ctx.fillStyle='#111827'; ctx.font='24px "Noto Sans KR", sans-serif'; ctx.fillText('공급자',106,300); ctx.fillText('공급받는자',106,450);
-  ctx.textAlign='left'; ctx.font='22px "Noto Sans KR", sans-serif';
-  ctx.fillText(canvasFitText(ctx,`상호 ${statementProfile.businessName || '-'}   |   성명 ${statementProfile.representativeName || statementProfile.name || '-'}`,900),190,235);
-  ctx.fillText(canvasFitText(ctx,`등록번호 ${statementProfile.registrationNumber || '-'}`,900),190,272);
-  ctx.fillText(canvasFitText(ctx,`이메일 ${statementProfile.businessEmail || '-'}   |   휴대번호 ${statementProfile.phone || '-'}`,900),190,309);
-  ctx.fillText(canvasFitText(ctx,`계좌번호 ${statementProfile.bankAccount || '-'}`,900),190,346);
-  ctx.font='28px "Noto Sans KR", sans-serif'; ctx.fillText(canvasFitText(ctx,`${record.companyName} 귀하`,900),190,450);
+  const profileBusiness = statementProfile.businessName || statementProfile.nickname || statementProfile.name || '-';
+  ctx.textAlign='left';
+  if (isPurchase) {
+    ctx.font='28px "Noto Sans KR", sans-serif';
+    ctx.fillText(canvasFitText(ctx, `상호 ${record.companyName}`, 900), 190, 300);
+    ctx.fillText(canvasFitText(ctx, `상호 ${profileBusiness}`, 900), 190, 450);
+  } else {
+    ctx.font='22px "Noto Sans KR", sans-serif';
+    const supplierLines = [
+      `상호 ${profileBusiness}   |   성명 ${statementProfile.representativeName || statementProfile.name || '-'}`,
+      `등록번호 ${statementProfile.registrationNumber || '-'}`,
+      `이메일 ${statementProfile.businessEmail || '-'}   |   휴대번호 ${statementProfile.phone || '-'}`,
+      `계좌번호 ${statementProfile.bankAccount || '-'}`
+    ];
+    supplierLines.forEach((line, index) => ctx.fillText(canvasFitText(ctx, line, 900), 190, 235 + index * 37));
+    ctx.font='28px "Noto Sans KR", sans-serif';
+    ctx.fillText(canvasFitText(ctx, `${record.companyName} 귀하`, 900), 190, 450);
+  }
   const tableTop=520, headerHeight=62, columns=[left,440,680,900,right];
   ctx.fillStyle='#f8fafc'; ctx.fillRect(left,tableTop,right-left,headerHeight); ctx.strokeStyle='#111827'; ctx.lineWidth=2; ctx.strokeRect(left,tableTop,right-left,headerHeight+items.length*rowHeight);
   columns.slice(1,-1).forEach(x=>{ctx.beginPath();ctx.moveTo(x,tableTop);ctx.lineTo(x,tableTop+headerHeight+items.length*rowHeight);ctx.stroke();});
@@ -187,9 +222,11 @@ function createFormalStatementCanvas(record) {
   items.forEach((item,index)=>{const top=tableTop+headerHeight+index*rowHeight;ctx.beginPath();ctx.moveTo(left,top);ctx.lineTo(right,top);ctx.stroke();ctx.fillStyle='#111827';ctx.font='23px "Noto Sans KR", sans-serif';ctx.textAlign='center';ctx.fillText(canvasFitText(ctx,item.name,360),(columns[0]+columns[1])/2,top+51);ctx.fillText(item.quantity,(columns[1]+columns[2])/2,top+51);ctx.fillText(item.unitPrice==='-'?'-':`${formatNumber(item.unitPrice)}원`,(columns[2]+columns[3])/2,top+51);ctx.fillText(`${formatNumber(item.amount)}원`,(columns[3]+columns[4])/2,top+51);});
   let y=tableTop+headerHeight+items.length*rowHeight+52;ctx.setLineDash([8,8]);ctx.strokeStyle='#9ca3af';ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(right,y);ctx.stroke();ctx.setLineDash([]);
   const unpaidMatch=String(record.content||'').match(/(?:기존\s*)?미수금:\s*([\d,]+)원/); const unpaid=unpaidMatch?unpaidMatch[1]:'0';
-  const breakdown=[['부대비용',`${record.addText?`${record.addText} = `:''}${formatNumber(record.addTotal)}원`],['수수료',`${formatNumber(record.commissionRate)}% = ${formatNumber(record.commissionAmount)}원`],['기존 미수금',`${unpaid}원`]];
+  const breakdown=isPurchase
+    ? [['거래 구분','수매']]
+    : [['부대비용',`${record.addText?`${record.addText} = `:''}${formatNumber(record.addTotal)}원`],['수수료',`${formatNumber(record.commissionRate)}% = ${formatNumber(record.commissionAmount)}원`],['기존 미수금',`${unpaid}원`]];
   ctx.font='24px "Noto Sans KR", sans-serif';breakdown.forEach(([label,value])=>{y+=48;ctx.fillStyle='#4b5563';ctx.textAlign='left';ctx.fillText(label,left,y);ctx.fillStyle='#111827';ctx.textAlign='right';ctx.fillText(canvasFitText(ctx,value,850),right,y);});
-  y+=35;ctx.setLineDash([8,8]);ctx.strokeStyle='#9ca3af';ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(right,y);ctx.stroke();ctx.setLineDash([]);y+=65;ctx.fillStyle='#111827';ctx.textAlign='left';ctx.font='700 30px "Noto Sans KR", sans-serif';ctx.fillText('총 합계',left,y);ctx.fillStyle='#1769aa';ctx.textAlign='right';ctx.font='700 38px "Noto Sans KR", sans-serif';ctx.fillText(`${formatNumber(record.total)}원`,right,y);y+=62;ctx.fillStyle='#6b7280';ctx.textAlign='right';ctx.font='20px "Noto Sans KR", sans-serif';ctx.fillText('위 금액을 청구합니다.',right,y);
+  y+=35;ctx.setLineDash([8,8]);ctx.strokeStyle='#9ca3af';ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(right,y);ctx.stroke();ctx.setLineDash([]);y+=65;ctx.fillStyle='#111827';ctx.textAlign='left';ctx.font='700 30px "Noto Sans KR", sans-serif';ctx.fillText('총 합계',left,y);ctx.fillStyle='#1769aa';ctx.textAlign='right';ctx.font='700 38px "Noto Sans KR", sans-serif';ctx.fillText(`${formatNumber(record.total)}원`,right,y);y+=62;ctx.fillStyle='#6b7280';ctx.textAlign='right';ctx.font='20px "Noto Sans KR", sans-serif';ctx.fillText(isPurchase ? '위 금액을 지급합니다.' : '위 금액을 청구합니다.',right,y);
   return canvas;
 }
 
@@ -212,7 +249,7 @@ function saveStatementImage(id) {
   const canvas = createFormalStatementCanvas(record);
   const link = document.createElement('a');
   const safeCompany = String(record.companyName || '거래처').replace(/[\\/:*?"<>|]/g, '_');
-  link.download = `거래명세서_${safeCompany}_${record.saleDate}.png`;
+  link.download = `${record.statementType === 'purchase' ? '수매' : '판매'}_거래명세서_${safeCompany}_${record.saleDate}.png`;
   link.href = canvas.toDataURL('image/png');
   link.click();
   showToast('거래명세서를 사진으로 저장했습니다.');

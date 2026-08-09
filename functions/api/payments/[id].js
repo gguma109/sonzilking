@@ -38,7 +38,7 @@ export async function onRequestPut({ env, request, params, data }) {
 
     await db.prepare('UPDATE payments SET amount = ? WHERE id = ? AND userId = ?')
       .bind(amount, params.id, data.userId).run();
-    return Response.json({ success: true }, { headers: CORS });
+    return Response.json({ success: true, companyName: payment.companyName }, { headers: CORS });
   } catch (error) {
     return Response.json({ success: false, error: error.message }, { status: 500, headers: CORS });
   }
@@ -47,12 +47,17 @@ export async function onRequestPut({ env, request, params, data }) {
 export async function onRequestDelete({ env, params, data }) {
   try {
     const db = getDB(env);
+    const payment = await db.prepare('SELECT companyName FROM payments WHERE id = ? AND userId = ?')
+      .bind(params.id, data.userId).first();
+    if (!payment) {
+      return Response.json({ success: false, error: '수납 기록을 찾을 수 없습니다.' }, { status: 404, headers: CORS });
+    }
     const result = await db.prepare('DELETE FROM payments WHERE id = ? AND userId = ?')
       .bind(params.id, data.userId).run();
     if (!result.meta?.changes) {
       return Response.json({ success: false, error: '수납 기록을 찾을 수 없습니다.' }, { status: 404, headers: CORS });
     }
-    return Response.json({ success: true }, { headers: CORS });
+    return Response.json({ success: true, companyName: payment.companyName }, { headers: CORS });
   } catch (error) {
     return Response.json({ success: false, error: error.message }, { status: 500, headers: CORS });
   }
