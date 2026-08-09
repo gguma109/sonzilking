@@ -56,8 +56,8 @@ function buildStoredPurchaseText(purchase, receiverName) {
     '거 래 명 세 서',
     '거래유형: 수매',
     `발급일: ${issued}`,
-    `공급자 상호: ${purchase.companyName}`,
-    `공급받는자 상호: ${receiverName || '손질왕'}`,
+    `공급자: ${purchase.companyName}`,
+    `공급받는자: ${receiverName || '손질왕'}`,
     ''
   ];
   if (purchase.kilosText) lines.push(`1. 수매내역 | ${purchase.kilosText} | ${formatAmount(purchase.total)}원`);

@@ -57,6 +57,11 @@ function normalizeStatementContent(content, statementType = 'sale', currentBalan
   let source = String(content || '')
     .replace(/(^|\n)미수금:/g, '$1기존 미수금:')
     .replace(/\n?현재\s*남은\s*미수금:\s*(?:확인 불가|[\d,]+원)/g, '');
+  if (statementType === 'purchase') {
+    source = source
+      .replace(/(^|\n)공급자\s+상호:/g, '$1공급자:')
+      .replace(/(^|\n)공급받는자\s+상호:/g, '$1공급받는자:');
+  }
   if (statementType === 'sale' && currentBalance !== null && currentBalance !== undefined) {
     const currentLine = `기존 미수금: ${formatNumber(currentBalance)}원`;
     if (/(?:기존\s*)?미수금:\s*(?:확인 불가|[\d,]+원)/.test(source)) {
@@ -217,8 +222,8 @@ function createFormalStatementCanvas(record) {
   ctx.textAlign='left';
   if (isPurchase) {
     ctx.font='28px "Noto Sans KR", sans-serif';
-    ctx.fillText(canvasFitText(ctx, `상호 ${record.companyName}`, 900), 190, 300);
-    ctx.fillText(canvasFitText(ctx, `상호 ${profileBusiness}`, 900), 190, 450);
+    ctx.fillText(canvasFitText(ctx, record.companyName, 900), 190, 300);
+    ctx.fillText(canvasFitText(ctx, profileBusiness, 900), 190, 450);
   } else {
     ctx.font='22px "Noto Sans KR", sans-serif';
     const supplierLines = [
