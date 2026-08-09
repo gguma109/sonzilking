@@ -1094,6 +1094,17 @@ body:not(.main-body) button:disabled {
   .calc-op { font-size: 0.85rem; }
 }
 .admin-user-card { margin-bottom: 12px; }
+.admin-access-label { margin-top: 3px; color: var(--text-muted); font-size: 0.72rem; }
+.admin-role-badge { display: inline-flex; margin-left: 5px; padding: 2px 7px; border-radius: 999px; background: #e2e8f0; color: #475569; font-size: 0.68rem; font-weight: 700; vertical-align: middle; }
+.admin-role-badge.role-owner { background: #fef3c7; color: #92400e; }
+.admin-role-badge.role-operator { background: #dbeafe; color: #1d4ed8; }
+.btn-admin-action { padding: 4px 12px; border: 1.5px solid #93c5fd; border-radius: var(--radius-xs); background: transparent; color: #2563eb; font-family: 'Noto Sans KR', sans-serif; font-size: 0.72rem; cursor: pointer; transition: var(--transition); }
+.btn-admin-action:hover { border-color: #2563eb; background: #2563eb; color: white; }
+.btn-admin-action.btn-role { border-color: #a7f3d0; color: #047857; }
+.btn-admin-action.btn-role:hover { border-color: #059669; background: #059669; color: white; }
+.admin-password-modal { max-width: 420px; }
+.admin-password-modal .auth-input { margin-bottom: 4px; }
+.admin-password-modal .btn-save { width: 100%; margin-top: 12px; }
 .profile-card { max-width: 620px; margin: 0 auto; }
 .profile-card .form-group { margin-bottom: 14px; }
 .profile-card label { display: block; margin-bottom: 6px; color: var(--text-secondary); font-size: 0.8rem; font-weight: 600; }

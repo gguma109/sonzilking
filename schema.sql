@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT NOT NULL,
   nickname TEXT,
   recoveryEmail TEXT,
+  role TEXT NOT NULL DEFAULT 'member',
   createdAt TEXT NOT NULL
 );
 
