@@ -4,6 +4,7 @@
 
 let allPurchaseRecords = [];
 let editPurchaseId = null; // 현재 편집 중인 레코드 ID
+let purchaseCompanyPicker = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('purchase-date').value = getTodayDate();
@@ -31,6 +32,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (e.target === modal) modal.classList.remove('active');
   });
 
+  purchaseCompanyPicker = createCompanyPicker({
+    type: 'purchases',
+    inputId: 'company-name-pur',
+    containerId: 'purchase-company-picker',
+    onRename: loadPurchaseRecords
+  });
   await loadCompanies();
   await loadPurchaseRecords();
 });
@@ -46,34 +53,9 @@ function calculatePurchase() {
   return { kilos: 1, unitPrice: total, total }; // API 호환
 }
 
-// ---- 업체명 자동완성 및 칩 ----
+// ---- 수매 업체 목록 ----
 async function loadCompanies() {
-  try {
-    const data = await API.get('companies');
-    const companies = data.companies || [];
-
-    const datalist = document.getElementById('company-datalist-pur');
-    datalist.innerHTML = '';
-    companies.forEach(name => {
-      const opt = document.createElement('option');
-      opt.value = name;
-      datalist.appendChild(opt);
-    });
-
-    const chipsContainer = document.getElementById('company-chips-pur');
-    if (chipsContainer) {
-      chipsContainer.innerHTML = '';
-      companies.forEach(name => {
-        const chip = document.createElement('div');
-        chip.className = 'chip';
-        chip.textContent = name;
-        chip.onclick = () => {
-          document.getElementById('company-name-pur').value = name;
-        };
-        chipsContainer.appendChild(chip);
-      });
-    }
-  } catch {}
+  if (purchaseCompanyPicker) await purchaseCompanyPicker.load();
 }
 
 // ---- 저장 ----

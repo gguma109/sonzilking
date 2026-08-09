@@ -30,13 +30,45 @@
           <option value="year">연도별</option>
         </select>
       </div>
-      <div class="form-group">
+      <div class="form-group" id="statistics-company-period-filter" hidden>
+        <label class="form-label" for="statistics-company-period">거래처 조회 단위</label>
+        <select id="statistics-company-period" class="form-control">
+          <option value="year">년도별</option>
+          <option value="quarter">분기별</option>
+          <option value="month">월별</option>
+          <option value="day">일별</option>
+        </select>
+      </div>
+      <div class="form-group" id="statistics-year-filter">
         <label class="form-label" for="statistics-year">조회 연도</label>
         <select id="statistics-year" class="form-control"></select>
       </div>
+      <div class="form-group" id="statistics-quarter-filter" hidden>
+        <label class="form-label" for="statistics-quarter">조회 분기</label>
+        <select id="statistics-quarter" class="form-control">
+          <option value="1">1분기 (1~3월)</option>
+          <option value="2">2분기 (4~6월)</option>
+          <option value="3">3분기 (7~9월)</option>
+          <option value="4">4분기 (10~12월)</option>
+        </select>
+      </div>
+      <div class="form-group" id="statistics-month-filter" hidden>
+        <label class="form-label" for="statistics-month">조회 월</label>
+        <input type="month" id="statistics-month" class="form-control">
+      </div>
+      <div class="form-group" id="statistics-day-filter" hidden>
+        <label class="form-label" for="statistics-day">조회 날짜</label>
+        <input type="date" id="statistics-day" class="form-control">
+      </div>
       <div class="form-group statistics-company-filter" id="statistics-company-filter" hidden>
-        <label class="form-label" for="statistics-company">거래처 선택</label>
+        <label class="form-label" for="statistics-company">기준 거래처</label>
         <select id="statistics-company" class="form-control"></select>
+      </div>
+      <div class="form-group statistics-comparison-filter" id="statistics-comparison-filter" hidden>
+        <label class="form-label" for="statistics-comparison-company">비교 거래처</label>
+        <select id="statistics-comparison-company" class="form-control" disabled>
+          <option value="none">비교 안 함</option>
+        </select>
       </div>
     </section>
 
@@ -53,6 +85,15 @@
         <span>매출 - 지출</span>
         <strong><span id="statistics-net-total">0</span>원</strong>
       </article>
+    </section>
+
+    <section class="statistics-comparison" id="statistics-comparison" aria-label="거래처 비교" hidden>
+      <div class="records-header">
+        <div class="records-title">⚖️ 거래처 비교</div>
+        <div class="records-count" id="statistics-comparison-period"></div>
+      </div>
+      <div class="statistics-comparison-grid" id="statistics-comparison-cards"></div>
+      <div class="statistics-comparison-result" id="statistics-comparison-result"></div>
     </section>
 
     <section class="records-card">

@@ -8,6 +8,7 @@ let renderedUnpaidRecords = [];
 let editSalesId = null; // 현재 편집 중인 레코드 ID;
 let statementSalesRecord = null;
 let statementProfile = null;
+let salesCompanyPicker = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
   // 기본 날짜
@@ -57,6 +58,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 초기 데이터 로드
   try { statementProfile = (await API.get('profile')).user; } catch {}
+  salesCompanyPicker = createCompanyPicker({
+    type: 'sales',
+    inputId: 'company-name',
+    containerId: 'sales-company-picker',
+    onRename: async () => {
+      await loadSalesRecords();
+      await loadUnpaidRecords();
+    }
+  });
   await loadCompanies();
   await loadSalesRecords();
   await loadUnpaidRecords();
@@ -127,35 +137,9 @@ async function checkUnpaidBalance() {
   }
 }
 
-// ---- 업체명 자동완성 및 칩 ----
+// ---- 판매 업체 목록 ----
 async function loadCompanies() {
-  try {
-    const data = await API.get('companies');
-    const companies = data.companies || [];
-    
-    const datalist = document.getElementById('company-datalist');
-    datalist.innerHTML = '';
-    companies.forEach(name => {
-      const opt = document.createElement('option');
-      opt.value = name;
-      datalist.appendChild(opt);
-    });
-
-    const chipsContainer = document.getElementById('company-chips');
-    if (chipsContainer) {
-      chipsContainer.innerHTML = '';
-      companies.forEach(name => {
-        const chip = document.createElement('div');
-        chip.className = 'chip';
-        chip.textContent = name;
-        chip.onclick = () => {
-          document.getElementById('company-name').value = name;
-          checkUnpaidBalance();
-        };
-        chipsContainer.appendChild(chip);
-      });
-    }
-  } catch {}
+  if (salesCompanyPicker) await salesCompanyPicker.load();
 }
 
 // ---- 저장 ----
