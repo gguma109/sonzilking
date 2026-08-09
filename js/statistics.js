@@ -69,7 +69,7 @@ function populateYearFilter() {
   years.push(new Date().getFullYear());
   const uniqueYears = [...new Set(years)].sort((a, b) => b - a);
   const select = document.getElementById('statistics-year');
-  select.replaceChildren(new Option('전체 연도', 'all'));
+  select.replaceChildren();
   uniqueYears.forEach(year => select.add(new Option(`${year}년`, String(year))));
   select.value = String(new Date().getFullYear());
 }
@@ -102,24 +102,24 @@ function syncStatisticsFilters() {
   const group = document.getElementById('statistics-group').value;
   const isCompany = group === 'company';
   const companyPeriod = document.getElementById('statistics-company-period').value;
-  const usesYear = !isCompany ? group !== 'year' : companyPeriod === 'year' || companyPeriod === 'quarter';
+  const effectivePeriod = isCompany ? companyPeriod : group;
+  const usesYear = effectivePeriod === 'year' || effectivePeriod === 'quarter';
 
   document.getElementById('statistics-company-period-filter').hidden = !isCompany;
   document.getElementById('statistics-company-filter').hidden = !isCompany;
   document.getElementById('statistics-comparison-filter').hidden = !isCompany;
   document.getElementById('statistics-year-filter').hidden = !usesYear;
-  document.getElementById('statistics-quarter-filter').hidden = !(isCompany && companyPeriod === 'quarter');
-  document.getElementById('statistics-month-filter').hidden = !(isCompany && companyPeriod === 'month');
-  document.getElementById('statistics-day-filter').hidden = !(isCompany && companyPeriod === 'day');
+  document.getElementById('statistics-quarter-filter').hidden = effectivePeriod !== 'quarter';
+  document.getElementById('statistics-month-filter').hidden = effectivePeriod !== 'month';
+  document.getElementById('statistics-day-filter').hidden = effectivePeriod !== 'day';
 
   const yearSelect = document.getElementById('statistics-year');
-  yearSelect.disabled = group === 'year';
-  if (group === 'year') yearSelect.value = 'all';
-  if (isCompany && companyPeriod === 'quarter' && yearSelect.value === 'all') {
+  yearSelect.disabled = false;
+  if (usesYear && !yearSelect.value) {
     const currentYear = String(new Date().getFullYear());
     yearSelect.value = [...yearSelect.options].some(option => option.value === currentYear)
       ? currentYear
-      : yearSelect.options[1]?.value || 'all';
+      : yearSelect.options[0]?.value || '';
   }
   if (!isCompany) {
     document.getElementById('statistics-comparison-company').value = 'none';
@@ -148,12 +148,6 @@ function getGroupInfo(record, group) {
     return { key: `${date.year}-Q${quarter}`, label: `${date.year}년 ${quarter}분기` };
   }
   return { key: String(date.year), label: `${date.year}년` };
-}
-
-function recordMatchesYear(record, selectedYear) {
-  if (selectedYear === 'all') return true;
-  const date = parseRecordDate(record);
-  return date && String(date.year) === selectedYear;
 }
 
 function recordMatchesCompanyPeriod(record, period, selectedYear, selectedQuarter, selectedMonth, selectedDay) {
@@ -223,6 +217,7 @@ function renderStatistics() {
   const selectedQuarter = document.getElementById('statistics-quarter').value;
   const selectedMonth = document.getElementById('statistics-month').value;
   const selectedDay = document.getElementById('statistics-day').value;
+  const effectivePeriod = group === 'company' ? companyPeriod : group;
   const rows = new Map();
   let salesTotal = 0;
   let purchaseTotal = 0;
@@ -236,7 +231,7 @@ function renderStatistics() {
     if (group === 'company') {
       if (!recordMatchesCompanyPeriod(record, companyPeriod, selectedYear, selectedQuarter, selectedMonth, selectedDay)) return;
       if (comparedCompanies && !comparedCompanies.has(companyName)) return;
-    } else if (!recordMatchesYear(record, selectedYear)) {
+    } else if (!recordMatchesCompanyPeriod(record, group, selectedYear, selectedQuarter, selectedMonth, selectedDay)) {
       return;
     }
 
@@ -278,8 +273,8 @@ function renderStatistics() {
     return b.key.localeCompare(a.key);
   });
 
-  const periodLabel = getCompanyPeriodLabel(companyPeriod, selectedYear, selectedQuarter, selectedMonth, selectedDay);
-  const title = group === 'company' ? `${GROUP_LABELS[group]} 통계 · ${periodLabel}` : `${GROUP_LABELS[group]} 통계`;
+  const periodLabel = getCompanyPeriodLabel(effectivePeriod, selectedYear, selectedQuarter, selectedMonth, selectedDay);
+  const title = `${GROUP_LABELS[group]} 통계 · ${periodLabel}`;
   document.getElementById('statistics-list-title').textContent = `📊 ${title}`;
   document.getElementById('statistics-count').textContent = `${list.length}${group === 'company' ? '곳' : '건'}`;
   renderCompanyComparison(rows, selectedCompany, comparisonCompany, periodLabel);

@@ -142,16 +142,24 @@ async function loadPurchaseRecords() {
     const data = await API.get('purchases');
     allPurchaseRecords = data.data || [];
     updateMonthlyPurchaseSummary();
-    renderPurchaseRecords(allPurchaseRecords);
   } catch {
     container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">기록을 불러올 수 없습니다</div></div>`;
   }
 }
 
+function getPurchaseRecordsForSelectedPeriod() {
+  const period = document.getElementById('purchase-summary-period').value;
+  const selected = document.getElementById(period === 'day' ? 'purchase-summary-day' : 'purchase-summary-month').value;
+  const dateLength = period === 'day' ? 10 : 7;
+  return allPurchaseRecords.filter(record =>
+    String(record.date || record.createdAt || '').slice(0, dateLength) === selected
+  );
+}
+
 function updateMonthlyPurchaseSummary() {
   const period = document.getElementById('purchase-summary-period').value;
   const selected = document.getElementById(period === 'day' ? 'purchase-summary-day' : 'purchase-summary-month').value;
-  const records = allPurchaseRecords.filter(record => String(record.date || record.createdAt || '').slice(0, period === 'day' ? 10 : 7) === selected);
+  const records = getPurchaseRecordsForSelectedPeriod();
   const total = records.reduce((sum, record) => sum + (Number(record.total) || 0), 0);
   const [year, monthNumber, day] = selected.split('-');
   document.getElementById('purchase-summary-label').textContent = period === 'day'
@@ -159,6 +167,7 @@ function updateMonthlyPurchaseSummary() {
     : `${year}년 ${Number(monthNumber)}월 총 지출`;
   document.getElementById('purchase-summary-amount').textContent = formatNumber(total);
   document.getElementById('purchase-summary-count').textContent = `${records.length}건`;
+  filterPurchaseRecords();
 }
 
 function syncPurchaseSummaryPeriod() {
@@ -221,7 +230,10 @@ function renderPurchaseRecords(records) {
 // ---- 검색 ----
 function filterPurchaseRecords() {
   const q = document.getElementById('records-search-pur').value.trim().toLowerCase();
-  const filtered = q ? allPurchaseRecords.filter(r => r.companyName.toLowerCase().includes(q)) : allPurchaseRecords;
+  const periodRecords = getPurchaseRecordsForSelectedPeriod();
+  const filtered = q
+    ? periodRecords.filter(r => String(r.companyName || '').toLowerCase().includes(q))
+    : periodRecords;
   renderPurchaseRecords(filtered);
 }
 

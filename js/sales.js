@@ -240,16 +240,24 @@ async function loadSalesRecords() {
     const data = await API.get('sales');
     allSalesRecords = data.data || [];
     updateMonthlySalesSummary();
-    renderSalesRecords(allSalesRecords);
   } catch {
     container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">기록을 불러올 수 없습니다</div></div>`;
   }
 }
 
+function getSalesRecordsForSelectedPeriod() {
+  const period = document.getElementById('sales-summary-period').value;
+  const selected = document.getElementById(period === 'day' ? 'sales-summary-day' : 'sales-summary-month').value;
+  const dateLength = period === 'day' ? 10 : 7;
+  return allSalesRecords.filter(record =>
+    String(record.date || record.createdAt || '').slice(0, dateLength) === selected
+  );
+}
+
 function updateMonthlySalesSummary() {
   const period = document.getElementById('sales-summary-period').value;
   const selected = document.getElementById(period === 'day' ? 'sales-summary-day' : 'sales-summary-month').value;
-  const records = allSalesRecords.filter(record => String(record.date || record.createdAt || '').slice(0, period === 'day' ? 10 : 7) === selected);
+  const records = getSalesRecordsForSelectedPeriod();
   const total = records.reduce((sum, record) => sum + (Number(record.total) || 0), 0);
   const [year, monthNumber, day] = selected.split('-');
   document.getElementById('sales-summary-label').textContent = period === 'day'
@@ -257,6 +265,7 @@ function updateMonthlySalesSummary() {
     : `${year}년 ${Number(monthNumber)}월 총 매출`;
   document.getElementById('sales-summary-amount').textContent = formatNumber(total);
   document.getElementById('sales-summary-count').textContent = `${records.length}건`;
+  filterSalesRecords();
 }
 
 function syncSalesSummaryPeriod() {
@@ -746,7 +755,10 @@ window.copySaleRecord = function(id) {
 
 function filterSalesRecords() {
   const q = document.getElementById('records-search').value.trim().toLowerCase();
-  const filtered = q ? allSalesRecords.filter(r => r.companyName.toLowerCase().includes(q)) : allSalesRecords;
+  const periodRecords = getSalesRecordsForSelectedPeriod();
+  const filtered = q
+    ? periodRecords.filter(r => String(r.companyName || '').toLowerCase().includes(q))
+    : periodRecords;
   renderSalesRecords(filtered);
 }
 
