@@ -211,7 +211,7 @@ function createFormalStatementCanvas(record) {
   const left = 42, right = width - 42;
   ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height);
   ctx.strokeStyle = '#111827'; ctx.lineWidth = 4; ctx.strokeRect(12, 12, width - 24, height - 24);
-  ctx.fillStyle = '#111827'; ctx.textAlign = 'center'; ctx.font = '500 44px "Noto Sans KR", sans-serif'; ctx.fillText(isPurchase ? '수 매 거 래 명 세 서' : '거 래 명 세 서', width / 2, 85);
+  ctx.fillStyle = '#111827'; ctx.textAlign = 'center'; ctx.font = '500 44px "Noto Sans KR", sans-serif'; ctx.fillText('거 래 명 세 서', width / 2, 85);
   ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(left, 120); ctx.lineTo(right, 120); ctx.stroke();
   ctx.textAlign = 'right'; ctx.fillStyle = '#4b5563'; ctx.font = '24px "Noto Sans KR", sans-serif'; ctx.fillText(`발급일: ${statementDateLabel(record.saleDate)}`, right, 165);
   const partyTop = 195, partyMid = 395, partyBottom = 485, labelRight = 170;
