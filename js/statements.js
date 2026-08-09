@@ -18,7 +18,10 @@ async function loadStatements() {
   try {
     const [response, profileResponse] = await Promise.all([API.get('statements'), API.get('profile')]);
     statementProfile = profileResponse.user || {};
-    allStatements = (response.data || []).map(record => ({ ...record, content: normalizeStatementContent(record.content) }));
+    allStatements = (response.data || []).map(record => ({
+      ...record,
+      content: normalizeStatementContent(record.content, record.statementType, record.currentBalance)
+    }));
     filterStatements();
     focusRequestedStatement();
   } catch (error) {
@@ -50,8 +53,21 @@ function renderStatements(records) {
     </article>`).join('');
 }
 
-function normalizeStatementContent(content) {
-  const lines = String(content || '').replace(/(^|\n)미수금:/g, '$1기존 미수금:').split(/\r?\n/);
+function normalizeStatementContent(content, statementType = 'sale', currentBalance = null) {
+  let source = String(content || '')
+    .replace(/(^|\n)미수금:/g, '$1기존 미수금:')
+    .replace(/\n?현재\s*남은\s*미수금:\s*(?:확인 불가|[\d,]+원)/g, '');
+  if (statementType === 'sale' && currentBalance !== null && currentBalance !== undefined) {
+    const currentLine = `기존 미수금: ${formatNumber(currentBalance)}원`;
+    if (/(?:기존\s*)?미수금:\s*(?:확인 불가|[\d,]+원)/.test(source)) {
+      source = source.replace(/(?:기존\s*)?미수금:\s*(?:확인 불가|[\d,]+원)/, currentLine);
+    } else if (/\n(?:청구 합계|총 합계|금일 합계):/.test(source)) {
+      source = source.replace(/(\n(?:청구 합계|총 합계|금일 합계):)/, `\n${currentLine}$1`);
+    } else {
+      source = `${source}\n${currentLine}`;
+    }
+  }
+  const lines = source.split(/\r?\n/);
   const isReceiver = line => /^공급받는자(?:\s+상호)?\s*:/.test(line.trim());
   const isSupplier = line => /^(공급자(?:\s+(?:상호|성명))?\s*:|등록번호\s*:|이메일\s*:|휴대번호\s*:|계좌번호\s*:)/.test(line.trim());
   const identityIndexes = [];
@@ -222,11 +238,12 @@ function createFormalStatementCanvas(record) {
   items.forEach((item,index)=>{const top=tableTop+headerHeight+index*rowHeight;ctx.beginPath();ctx.moveTo(left,top);ctx.lineTo(right,top);ctx.stroke();ctx.fillStyle='#111827';ctx.font='23px "Noto Sans KR", sans-serif';ctx.textAlign='center';ctx.fillText(canvasFitText(ctx,item.name,360),(columns[0]+columns[1])/2,top+51);ctx.fillText(item.quantity,(columns[1]+columns[2])/2,top+51);ctx.fillText(item.unitPrice==='-'?'-':`${formatNumber(item.unitPrice)}원`,(columns[2]+columns[3])/2,top+51);ctx.fillText(`${formatNumber(item.amount)}원`,(columns[3]+columns[4])/2,top+51);});
   let y=tableTop+headerHeight+items.length*rowHeight+52;ctx.setLineDash([8,8]);ctx.strokeStyle='#9ca3af';ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(right,y);ctx.stroke();ctx.setLineDash([]);
   const unpaidMatch=String(record.content||'').match(/(?:기존\s*)?미수금:\s*([\d,]+)원/); const unpaid=unpaidMatch?unpaidMatch[1]:'0';
+  const displayedUnpaid=record.currentBalance!==null&&record.currentBalance!==undefined?formatNumber(record.currentBalance):unpaid;
   const breakdown=isPurchase
     ? [['거래 구분','수매']]
-    : [['부대비용',`${record.addText?`${record.addText} = `:''}${formatNumber(record.addTotal)}원`],['수수료',`${formatNumber(record.commissionRate)}% = ${formatNumber(record.commissionAmount)}원`],['기존 미수금',`${unpaid}원`]];
+    : [['부대비용',`${record.addText?`${record.addText} = `:''}${formatNumber(record.addTotal)}원`],['수수료',`${formatNumber(record.commissionRate)}% = ${formatNumber(record.commissionAmount)}원`],['기존 미수금',`${displayedUnpaid}원`]];
   ctx.font='24px "Noto Sans KR", sans-serif';breakdown.forEach(([label,value])=>{y+=48;ctx.fillStyle='#4b5563';ctx.textAlign='left';ctx.fillText(label,left,y);ctx.fillStyle='#111827';ctx.textAlign='right';ctx.fillText(canvasFitText(ctx,value,850),right,y);});
-  y+=35;ctx.setLineDash([8,8]);ctx.strokeStyle='#9ca3af';ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(right,y);ctx.stroke();ctx.setLineDash([]);y+=65;ctx.fillStyle='#111827';ctx.textAlign='left';ctx.font='700 30px "Noto Sans KR", sans-serif';ctx.fillText('총 합계',left,y);ctx.fillStyle='#1769aa';ctx.textAlign='right';ctx.font='700 38px "Noto Sans KR", sans-serif';ctx.fillText(`${formatNumber(record.total)}원`,right,y);y+=62;ctx.fillStyle='#6b7280';ctx.textAlign='right';ctx.font='20px "Noto Sans KR", sans-serif';ctx.fillText(isPurchase ? '위 금액을 지급합니다.' : '위 금액을 청구합니다.',right,y);
+  y+=35;ctx.setLineDash([8,8]);ctx.strokeStyle='#9ca3af';ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(right,y);ctx.stroke();ctx.setLineDash([]);y+=65;ctx.fillStyle='#111827';ctx.textAlign='left';ctx.font='700 30px "Noto Sans KR", sans-serif';ctx.fillText(isPurchase ? '총 합계' : '청구 합계',left,y);ctx.fillStyle='#1769aa';ctx.textAlign='right';ctx.font='700 38px "Noto Sans KR", sans-serif';ctx.fillText(`${formatNumber(record.total)}원`,right,y);y+=62;ctx.fillStyle='#6b7280';ctx.textAlign='right';ctx.font='20px "Noto Sans KR", sans-serif';ctx.fillText(isPurchase ? '위 금액을 지급합니다.' : '위 금액을 청구합니다.',right,y);
   return canvas;
 }
 

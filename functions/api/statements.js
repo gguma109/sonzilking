@@ -150,7 +150,13 @@ export async function onRequestGet({ env, data }) {
         COALESCE(s.addTotal, 0) AS addTotal,
         COALESCE(s.commissionRate, 0) AS commissionRate,
         COALESCE(s.commissionAmount, 0) AS commissionAmount,
-        COALESCE(s.memo, p.memo, '') AS memo
+        COALESCE(s.memo, p.memo, '') AS memo,
+        CASE WHEN st.saleId LIKE 'purchase:%' THEN NULL ELSE MAX(0,
+          COALESCE((SELECT SUM(total) FROM sales
+            WHERE userId = st.userId AND TRIM(LOWER(companyName)) = TRIM(LOWER(st.companyName)) AND unpaid = 1), 0) -
+          COALESCE((SELECT SUM(amount) FROM payments
+            WHERE userId = st.userId AND TRIM(LOWER(companyName)) = TRIM(LOWER(st.companyName))), 0)
+        ) END AS currentBalance
       FROM statements st
       LEFT JOIN sales s ON st.saleId NOT LIKE 'purchase:%' AND s.id = st.saleId AND s.userId = st.userId
       LEFT JOIN purchases p ON st.saleId LIKE 'purchase:%' AND p.id = SUBSTR(st.saleId, 10) AND p.userId = st.userId
