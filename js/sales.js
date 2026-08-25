@@ -835,6 +835,7 @@ function renderUnpaidRecords(records) {
       <div class="record-header">
         <div class="record-company">${safeName}</div>
         <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
+          <button class="btn-pay" style="width:auto; padding:4px 9px; font-size:0.72rem;" onclick="toggleUnpaidDetails(${index})">세부내역</button>
           <button class="btn-pay" style="width:auto; padding:4px 9px; font-size:0.72rem;" onclick="togglePaymentHistory(${index})">수납내역 편집</button>
           <span style="padding: 4px 9px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; color: white; background: ${isPaid ? 'var(--success)' : 'var(--danger)'};">${isPaid ? '완납' : '미수'}</span>
         </div>
@@ -855,9 +856,86 @@ function renderUnpaidRecords(records) {
           <button class="btn-pay" style="width: auto; padding: 6px 12px;" onclick="submitPayment(${index}, true)">완납</button>
         </div>
       </div>`}
+      <div id="unpaid-details-${index}" style="display:none; margin-top:12px;"></div>
       <div id="payment-history-${index}" style="display:none; margin-top:12px;"></div>
     </div>
   `}).join('');
+}
+
+function buildUnpaidLedger(companyName, payments) {
+  const normalizedCompanyName = String(companyName || '').trim();
+  const sales = allSalesRecords
+    .filter(record =>
+      String(record.companyName || '').trim() === normalizedCompanyName &&
+      record.unpaid !== false && record.unpaid !== 0
+    )
+    .map(record => {
+      const date = String(record.date || record.createdAt || '').slice(0, 10);
+      const createdAt = String(record.createdAt || '');
+      const time = createdAt.includes('T') ? createdAt.slice(11, 23) : '00:00:00.000';
+      return {
+        id: `sale-${record.id}`,
+        type: 'sale',
+        date,
+        sortKey: `${date}T${time}`,
+        amount: Number(record.total) || 0,
+        detail: String(record.kilosText || record.memo || '판매 기록').trim()
+      };
+    });
+  const receipts = (payments || []).map(payment => ({
+    id: `payment-${payment.id}`,
+    type: 'payment',
+    date: String(payment.createdAt || '').slice(0, 10),
+    sortKey: String(payment.createdAt || ''),
+    amount: Number(payment.amount) || 0,
+    detail: String(payment.memo || '수납').trim()
+  }));
+  const entries = [...sales, ...receipts].sort((a, b) =>
+    a.sortKey.localeCompare(b.sortKey) || a.id.localeCompare(b.id)
+  );
+  let runningBalance = 0;
+  return entries.map(entry => {
+    runningBalance += entry.type === 'sale' ? entry.amount : -entry.amount;
+    return { ...entry, balance: Math.max(0, runningBalance) };
+  });
+}
+
+async function toggleUnpaidDetails(recordIndex) {
+  const record = renderedUnpaidRecords[recordIndex];
+  if (!record) return;
+  const container = document.getElementById(`unpaid-details-${recordIndex}`);
+  if (container.style.display !== 'none') {
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = 'block';
+  container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const response = await API.get(`payments?company=${encodeURIComponent(record.companyName)}`);
+    const ledger = buildUnpaidLedger(record.companyName, response.data || []);
+    if (!ledger.length) {
+      container.innerHTML = '<div class="statistics-empty">표시할 미수금 세부내역이 없습니다.</div>';
+      return;
+    }
+    container.innerHTML = `<section class="unpaid-ledger" aria-label="${escapeHtml(record.companyName)} 미수금 세부내역">
+      <div class="unpaid-ledger-header">
+        <strong>미수금 세부내역</strong>
+        <span>현재 잔액 ${formatNumber(record.balance)}원</span>
+      </div>
+      <div class="unpaid-ledger-columns" aria-hidden="true"><span>일자 / 내용</span><span>증감</span><span>잔액</span></div>
+      ${ledger.map(entry => `<div class="unpaid-ledger-row">
+        <div class="unpaid-ledger-description">
+          <strong>${formatDate(entry.date)} · ${entry.type === 'sale' ? '판매' : '수납'}</strong>
+          <small>${escapeHtml(entry.detail)}</small>
+        </div>
+        <span class="unpaid-ledger-change ${entry.type}">${entry.type === 'sale' ? '+' : '-'}${formatNumber(entry.amount)}원</span>
+        <strong class="unpaid-ledger-balance">${formatNumber(entry.balance)}원</strong>
+      </div>`).join('')}
+    </section>`;
+  } catch (error) {
+    container.innerHTML = `<div class="statistics-empty">세부내역을 불러오지 못했습니다.<br>${escapeHtml(error.message)}</div>`;
+  }
 }
 
 function filterUnpaidRecords() {
