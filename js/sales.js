@@ -862,42 +862,40 @@ function renderUnpaidRecords(records) {
   `}).join('');
 }
 
-function buildUnpaidLedger(companyName, payments) {
-  const normalizedCompanyName = String(companyName || '').trim();
-  const sales = allSalesRecords
-    .filter(record =>
-      String(record.companyName || '').trim() === normalizedCompanyName &&
-      record.unpaid !== false && record.unpaid !== 0
-    )
-    .map(record => {
-      const date = String(record.date || record.createdAt || '').slice(0, 10);
-      const createdAt = String(record.createdAt || '');
-      const time = createdAt.includes('T') ? createdAt.slice(11, 23) : '00:00:00.000';
-      return {
-        id: `sale-${record.id}`,
-        type: 'sale',
-        date,
-        sortKey: `${date}T${time}`,
-        amount: Number(record.total) || 0,
-        detail: String(record.kilosText || record.memo || '판매 기록').trim()
-      };
-    });
-  const receipts = (payments || []).map(payment => ({
-    id: `payment-${payment.id}`,
-    type: 'payment',
-    date: String(payment.createdAt || '').slice(0, 10),
-    sortKey: String(payment.createdAt || ''),
-    amount: Number(payment.amount) || 0,
-    detail: String(payment.memo || '수납').trim()
-  }));
-  const entries = [...sales, ...receipts].sort((a, b) =>
-    a.sortKey.localeCompare(b.sortKey) || a.id.localeCompare(b.id)
-  );
-  let runningBalance = 0;
-  return entries.map(entry => {
-    runningBalance += entry.type === 'sale' ? entry.amount : -entry.amount;
-    return { ...entry, balance: Math.max(0, runningBalance) };
+function buildUnpaidAllocation(sales, payments) {
+  const orderedSales = [...(sales || [])].sort((a, b) => {
+    const aKey = `${String(a.date || a.createdAt || '').slice(0, 10)}|${a.createdAt || ''}|${a.id || ''}`;
+    const bKey = `${String(b.date || b.createdAt || '').slice(0, 10)}|${b.createdAt || ''}|${b.id || ''}`;
+    return aKey.localeCompare(bKey);
   });
+  const orderedPayments = [...(payments || [])].sort((a, b) =>
+    String(a.createdAt || '').localeCompare(String(b.createdAt || '')) || String(a.id || '').localeCompare(String(b.id || ''))
+  );
+  const totalAmount = orderedSales.reduce((sum, sale) => sum + Math.max(0, Number(sale.total) || 0), 0);
+  const paidAmount = orderedPayments.reduce((sum, payment) => sum + Math.max(0, Number(payment.amount) || 0), 0);
+  let unallocatedPayment = paidAmount;
+  const allocatedSales = orderedSales.map(sale => {
+    const amount = Math.max(0, Number(sale.total) || 0);
+    const appliedAmount = Math.min(amount, unallocatedPayment);
+    unallocatedPayment = Math.max(0, unallocatedPayment - appliedAmount);
+    const balance = Math.max(0, amount - appliedAmount);
+    const status = balance === 0 ? '완납' : appliedAmount > 0 ? '일부수납' : '미수';
+    return { ...sale, amount, appliedAmount, balance, status };
+  });
+  return {
+    sales: allocatedSales,
+    payments: orderedPayments,
+    totalAmount,
+    paidAmount,
+    balance: Math.max(0, totalAmount - paidAmount),
+    unallocatedPayment
+  };
+}
+
+function unpaidAllocationMatchesSummary(allocation, summary) {
+  return ['totalAmount', 'paidAmount', 'balance'].every(key =>
+    Math.abs((Number(allocation[key]) || 0) - (Number(summary[key]) || 0)) < 0.5
+  );
 }
 
 async function toggleUnpaidDetails(recordIndex) {
@@ -912,26 +910,44 @@ async function toggleUnpaidDetails(recordIndex) {
   container.style.display = 'block';
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   try {
-    const response = await API.get(`payments?company=${encodeURIComponent(record.companyName)}`);
-    const ledger = buildUnpaidLedger(record.companyName, response.data || []);
-    if (!ledger.length) {
+    const response = await API.get(`unpaid?company=${encodeURIComponent(record.companyName)}`);
+    const details = response.data || {};
+    const allocation = buildUnpaidAllocation(details.sales || [], details.payments || []);
+    if (!unpaidAllocationMatchesSummary(allocation, details)) {
+      throw new Error('미수금 합계가 일치하지 않습니다. 화면을 새로고침해주세요.');
+    }
+    if (!allocation.sales.length) {
       container.innerHTML = '<div class="statistics-empty">표시할 미수금 세부내역이 없습니다.</div>';
       return;
     }
     container.innerHTML = `<section class="unpaid-ledger" aria-label="${escapeHtml(record.companyName)} 미수금 세부내역">
       <div class="unpaid-ledger-header">
         <strong>미수금 세부내역</strong>
-        <span>현재 잔액 ${formatNumber(record.balance)}원</span>
+        <span>현재 잔액 ${formatNumber(allocation.balance)}원</span>
       </div>
-      <div class="unpaid-ledger-columns" aria-hidden="true"><span>일자 / 내용</span><span>증감</span><span>잔액</span></div>
-      ${ledger.map(entry => `<div class="unpaid-ledger-row">
-        <div class="unpaid-ledger-description">
-          <strong>${formatDate(entry.date)} · ${entry.type === 'sale' ? '판매' : '수납'}</strong>
-          <small>${escapeHtml(entry.detail)}</small>
+      <div class="unpaid-allocation-summary">
+        <span>판매 합계<strong>${formatNumber(allocation.totalAmount)}원</strong></span>
+        <span>수납 합계<strong>${formatNumber(allocation.paidAmount)}원</strong></span>
+        <span>남은 미수금<strong>${formatNumber(allocation.balance)}원</strong></span>
+      </div>
+      <div class="unpaid-ledger-section-title">품목별 미수 현황 <small>오래된 판매부터 수납 반영</small></div>
+      ${allocation.sales.map(sale => `<article class="unpaid-allocation-item">
+        <div class="unpaid-allocation-item-header">
+          <span>${formatDate(String(sale.date || sale.createdAt || '').slice(0, 10))}</span>
+          <strong class="unpaid-status ${sale.status === '완납' ? 'paid' : sale.status === '일부수납' ? 'partial' : 'unpaid'}">${sale.status}</strong>
         </div>
-        <span class="unpaid-ledger-change ${entry.type}">${entry.type === 'sale' ? '+' : '-'}${formatNumber(entry.amount)}원</span>
-        <strong class="unpaid-ledger-balance">${formatNumber(entry.balance)}원</strong>
-      </div>`).join('')}
+        <div class="unpaid-allocation-item-detail">${escapeHtml(String(sale.kilosText || sale.memo || '판매 기록').trim())}</div>
+        <div class="unpaid-allocation-item-amounts">
+          <span>판매금액<strong>${formatNumber(sale.amount)}원</strong></span>
+          <span>수납반영<strong>${formatNumber(sale.appliedAmount)}원</strong></span>
+          <span>남은미수<strong>${formatNumber(sale.balance)}원</strong></span>
+        </div>
+      </article>`).join('')}
+      <div class="unpaid-ledger-section-title">수납 이력</div>
+      ${allocation.payments.length ? allocation.payments.map(payment => `<div class="unpaid-payment-row">
+        <div><strong>${formatDate(payment.createdAt)}</strong><small>${escapeHtml(payment.memo || '수납')}</small></div>
+        <strong>-${formatNumber(payment.amount)}원</strong>
+      </div>`).join('') : '<div class="statistics-empty">수납 이력이 없습니다.</div>'}
     </section>`;
   } catch (error) {
     container.innerHTML = `<div class="statistics-empty">세부내역을 불러오지 못했습니다.<br>${escapeHtml(error.message)}</div>`;
