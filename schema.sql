@@ -8,6 +8,12 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT NOT NULL,
   nickname TEXT,
   recoveryEmail TEXT,
+  businessName TEXT NOT NULL DEFAULT '',
+  representativeName TEXT NOT NULL DEFAULT '',
+  registrationNumber TEXT NOT NULL DEFAULT '',
+  businessEmail TEXT NOT NULL DEFAULT '',
+  phone TEXT NOT NULL DEFAULT '',
+  bankAccount TEXT NOT NULL DEFAULT '',
   role TEXT NOT NULL DEFAULT 'member',
   createdAt TEXT NOT NULL
 );
@@ -72,3 +78,16 @@ CREATE TABLE IF NOT EXISTS payments (
   memo TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_payments_company ON payments(companyName);
+
+CREATE TABLE IF NOT EXISTS statements (
+  id TEXT PRIMARY KEY,
+  userId TEXT NOT NULL,
+  saleId TEXT NOT NULL,
+  companyName TEXT NOT NULL,
+  saleDate TEXT NOT NULL,
+  total INTEGER NOT NULL DEFAULT 0,
+  content TEXT NOT NULL,
+  createdAt TEXT NOT NULL,
+  updatedAt TEXT NOT NULL,
+  UNIQUE(userId, saleId)
+);
