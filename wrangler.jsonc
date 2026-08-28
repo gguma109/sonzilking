@@ -3,6 +3,13 @@
   "name": "sonzilking",
   "pages_build_output_dir": ".",
   "compatibility_date": "2026-08-28",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sonzilking-local",
+      "database_id": "5c639258-a9eb-44b5-abff-f2a3915f309f"
+    }
+  ],
   "env": {
     "production": {
       "d1_databases": [
