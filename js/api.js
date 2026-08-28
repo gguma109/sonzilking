@@ -124,6 +124,26 @@ function goBackOrHome(event) {
 
 window.goBackOrHome = goBackOrHome;
 
+// ---- Environment banner ----
+function showEnvironmentBanner() {
+  if (window.location.hostname !== 'test.sonzilking.pages.dev') return;
+  if (document.querySelector('.environment-banner')) return;
+
+  document.body.classList.add('test-environment');
+  const banner = document.createElement('div');
+  banner.className = 'environment-banner';
+  banner.setAttribute('role', 'status');
+
+  const label = document.createElement('strong');
+  label.textContent = 'TEST';
+  const message = document.createElement('span');
+  message.textContent = '테스트 서버 · 입력한 내용은 운영에 반영되지 않습니다';
+  banner.append(label, message);
+  document.body.prepend(banner);
+}
+
+document.addEventListener('DOMContentLoaded', showEnvironmentBanner);
+
 // ---- Security ----
 function escapeHtml(str) {
   return String(str || '')

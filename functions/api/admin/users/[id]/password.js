@@ -19,7 +19,8 @@ export async function onRequestPut({ request, env, params, data }) {
   try {
     const db = getDB(env);
     await ensureRoleColumn(db);
-    const owner = await db.prepare('SELECT id FROM users ORDER BY createdAt ASC, id ASC LIMIT 1').first();
+    const owner = await db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY createdAt ASC, id ASC LIMIT 1").first()
+      || await db.prepare('SELECT id FROM users ORDER BY createdAt ASC, id ASC LIMIT 1').first();
     const actor = await db.prepare('SELECT id, role FROM users WHERE id = ?').bind(data.userId).first();
     const actorRole = owner?.id === actor?.id ? 'owner' : actor?.role === 'operator' ? 'operator' : 'member';
     if (!owner || !actor || actorRole === 'member') {

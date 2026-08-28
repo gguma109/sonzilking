@@ -11,7 +11,8 @@ async function ensureRoleColumn(db) {
 
 async function getAccess(db, userId) {
   await ensureRoleColumn(db);
-  const owner = await db.prepare('SELECT id FROM users ORDER BY createdAt ASC, id ASC LIMIT 1').first();
+  const owner = await db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY createdAt ASC, id ASC LIMIT 1").first()
+    || await db.prepare('SELECT id FROM users ORDER BY createdAt ASC, id ASC LIMIT 1').first();
   const actor = await db.prepare('SELECT id, role FROM users WHERE id = ?').bind(userId).first();
   const accessRole = owner?.id === actor?.id ? 'owner' : actor?.role === 'operator' ? 'operator' : 'member';
   return { owner, actor, accessRole };

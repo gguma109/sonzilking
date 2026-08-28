@@ -38,6 +38,39 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+.environment-banner {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 12px;
+  color: #fff;
+  background: repeating-linear-gradient(135deg, #b45309 0, #b45309 14px, #c2410c 14px, #c2410c 28px);
+  box-shadow: 0 2px 10px rgba(124, 45, 18, 0.3);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  text-align: center;
+}
+.environment-banner strong {
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #9a3412;
+  background: #fff7ed;
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+}
+.test-environment .page-header { top: 34px; }
+.main-body > .environment-banner {
+  flex-shrink: 0;
+  width: calc(100% + 40px);
+  margin: -24px -20px 0;
+}
+
 /* ===========================
    MAIN PAGE
 =========================== */
