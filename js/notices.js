@@ -60,11 +60,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const list = document.getElementById('release-list');
   const current = releases[0];
 
-  document.getElementById('release-count').textContent = `${releases.length}개 버전`;
+  document.getElementById('release-count').textContent = `${releases.length}개 공지`;
 
   if (!current) {
-    document.getElementById('release-current-summary').textContent = '등록된 업데이트가 없습니다.';
-    list.appendChild(createTextElement('div', 'empty-state', '등록된 업데이트가 없습니다.'));
+    document.getElementById('release-current-title').textContent = '등록된 공지가 없습니다';
+    document.getElementById('release-current-summary').textContent = '앞으로 운영 사이트에 정식 배포되는 변경사항만 이곳에 안내합니다.';
+    document.querySelector('.release-current-version').hidden = true;
+
+    const empty = document.createElement('div');
+    empty.className = 'release-empty';
+    empty.append(
+      createTextElement('span', 'release-empty-icon', '📭'),
+      createTextElement('strong', '', '아직 등록된 배포 공지가 없습니다.'),
+      createTextElement('p', '', '다음 정식 배포부터 버전과 수정사항을 알려드리겠습니다.')
+    );
+    list.appendChild(empty);
     return;
   }
 

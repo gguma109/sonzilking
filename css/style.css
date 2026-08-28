@@ -1728,6 +1728,22 @@ body:not(.main-body) .company-picker-select:hover { background: var(--primary-pa
 .release-section-heading h2 { margin-top: 2px; font-size: 1.25rem; letter-spacing: -0.04em; }
 .release-section-heading > strong { color: var(--text-muted); font-size: 0.72rem; }
 .release-list { display: grid; gap: 14px; }
+.release-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 210px;
+  padding: 34px 20px;
+  border: 1px dashed #cbd5e1;
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.72);
+  text-align: center;
+}
+.release-empty-icon { margin-bottom: 12px; font-size: 2rem; }
+.release-empty strong { color: var(--text-primary); font-size: 0.9rem; }
+.release-empty p { margin-top: 6px; color: var(--text-muted); font-size: 0.72rem; line-height: 1.5; }
 
 .release-card {
   padding: 21px;
