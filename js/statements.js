@@ -199,8 +199,8 @@ function getFormalStatementItems(record) {
   if (!parsedItems.length) return [{ name: lines.join(' / ') || fallbackName, quantity: '-', unitPrice: '-', amount: fallbackAmount }];
   return parsedItems.map(item => ({
     name: item.name,
-    quantity: `${Number(item.quantity).toLocaleString('ko-KR', { maximumFractionDigits: 3 })}${item.quantityUnit === '수량' ? '' : item.quantityUnit}`,
-    unitPrice: item.unitPrice,
+    quantity: item.amountOnly ? '-' : `${Number(item.quantity).toLocaleString('ko-KR', { maximumFractionDigits: 3 })}${item.quantityUnit === '수량' ? '' : item.quantityUnit}`,
+    unitPrice: item.amountOnly ? '-' : item.unitPrice,
     amount: item.amount
   }));
 }

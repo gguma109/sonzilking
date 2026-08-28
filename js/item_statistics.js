@@ -144,7 +144,7 @@ function renderItemRecords(entries) {
       </div>
       <div class="item-statistics-expression">${escapeHtml(item.expression)}</div>
       <div class="item-statistics-record-bottom">
-        <span>${formatDecimal(item.quantity)}${item.quantityUnit === '수량' ? '' : item.quantityUnit} × ${formatNumber(item.unitPrice)}원</span>
+        <span>${item.amountOnly ? '금액 직접 입력' : `${formatDecimal(item.quantity)}${item.quantityUnit === '수량' ? '' : item.quantityUnit} × ${formatNumber(item.unitPrice)}원`}</span>
         <strong>${formatNumber(item.amount)}원</strong>
       </div>
     </article>`).join('');

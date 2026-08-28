@@ -68,6 +68,28 @@
       }
     }
 
+    if (parts.length === 1) {
+      const directAmountMatch = expression.match(/^(.*?[^\d,.\s])\s*([\d,]+(?:\.\d+)?)\s*원?\s*$/);
+      if (directAmountMatch) {
+        const directName = cleanName(directAmountMatch[1]);
+        const directAmount = parseNumber(directAmountMatch[2]);
+        if (directName && directAmount !== null && normalizeName(directName) !== '합계') {
+          return {
+            valid: true,
+            lineNumber,
+            name: directName,
+            key: normalizeName(directName),
+            quantity: 0,
+            quantityUnit: '금액',
+            unitPrice: 0,
+            amount: Math.round(directAmount),
+            amountOnly: true,
+            expression
+          };
+        }
+      }
+    }
+
     name = cleanName(name);
     const quantity = parseNumber(quantityText);
     const unitPrice = parseNumber(unitPriceText);

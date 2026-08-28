@@ -79,7 +79,11 @@ function calculateSales() {
   const commissionRate = parseFloat(document.getElementById('commission-rate').value) || 0;
 
   const parsedItems = ItemParser.parseItems(kilosText);
-  const kilosTotal = parsedItems.total;
+  const editingRecord = editSalesId ? allSalesRecords.find(record => record.id === editSalesId) : null;
+  const unchangedLegacyText = editingRecord
+    && String(editingRecord.kilosText || '') === kilosText
+    && parsedItems.errors.length > 0;
+  const kilosTotal = unchangedLegacyText ? Number(editingRecord.kilosTotal) || 0 : parsedItems.total;
   const addTotal = parseAndCalculateMath(addText);
   // 수수료 및 총액 계산
   let commissionAmount = 0;
@@ -116,7 +120,7 @@ function calculateSales() {
     commissionRate, 
     commissionAmount, 
     grandTotal,
-    itemErrors: parsedItems.errors
+    itemErrors: unchangedLegacyText ? [] : parsedItems.errors
   };
 }
 
@@ -309,7 +313,7 @@ function renderSalesRecords(records) {
         ${r.commissionRate > 0 ? `<br>수수료 ${r.commissionRate}% (+${formatNumber(r.commissionAmount)}원)` : ''}`;
     } else {
       const itemRows = ItemParser.parseItems(r.kilosText || '').items.map(item => `
-        <div>🐟 <b>${escapeHtml(item.name)}:</b> ${formatItemQuantity(item)} × ${formatNumber(item.unitPrice)}원 = <b>${formatNumber(item.amount)}원</b></div>
+        <div>🐟 <b>${escapeHtml(item.name)}:</b> ${formatItemCalculation(item)}</div>
       `).join('');
       detailHTML = `
         <div style="font-size:0.8rem; color:#555; background:#f5f6f8; padding:8px; border-radius:6px; margin-bottom:6px;">
@@ -345,8 +349,14 @@ function renderSalesRecords(records) {
 }
 
 function formatItemQuantity(item) {
+  if (item.amountOnly) return '-';
   const quantity = Number(item.quantity).toLocaleString('ko-KR', { maximumFractionDigits: 3 });
   return `${quantity}${item.quantityUnit === '수량' ? '' : item.quantityUnit}`;
+}
+
+function formatItemCalculation(item) {
+  if (item.amountOnly) return `<b>${formatNumber(item.amount)}원</b>`;
+  return `${formatItemQuantity(item)} × ${formatNumber(item.unitPrice)}원 = <b>${formatNumber(item.amount)}원</b>`;
 }
 
 function getStatementItems(record) {
@@ -551,7 +561,7 @@ function parseStatementItemLine(line) {
     return {
       name: parsed.name,
       quantity: formatItemQuantity(parsed),
-      unitPrice: parsed.unitPrice,
+      unitPrice: parsed.amountOnly ? null : parsed.unitPrice,
       amount: parsed.amount,
       raw: parsed.expression
     };
@@ -580,7 +590,7 @@ function getStatementItems(record) {
     if (parsedItems.length) return parsedItems.map(item => ({
       name: item.name,
       quantity: formatItemQuantity(item),
-      unitPrice: item.unitPrice,
+      unitPrice: item.amountOnly ? null : item.unitPrice,
       amount: item.amount,
       raw: item.expression
     }));

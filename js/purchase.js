@@ -46,12 +46,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 function calculatePurchase() {
   const kilosText = document.getElementById('calc-kilos-pur').value;
   const parsedItems = ItemParser.parseItems(kilosText);
-  const total = parsedItems.total;
+  const editingRecord = editPurchaseId ? allPurchaseRecords.find(record => record.id === editPurchaseId) : null;
+  const unchangedLegacyText = editingRecord
+    && String(editingRecord.kilosText || '') === kilosText
+    && parsedItems.errors.length > 0;
+  const total = unchangedLegacyText ? Number(editingRecord.total) || 0 : parsedItems.total;
 
   document.getElementById('preview-kilos-pur').textContent = formatNumber(total) + '원';
   document.getElementById('grand-total-pur').textContent = formatNumber(total);
 
-  return { kilos: 1, unitPrice: total, total, itemErrors: parsedItems.errors }; // API 호환
+  return { kilos: 1, unitPrice: total, total, itemErrors: unchangedLegacyText ? [] : parsedItems.errors }; // API 호환
 }
 
 // ---- 수매 업체 목록 ----
@@ -211,7 +215,7 @@ function renderPurchaseRecords(records) {
       detailHTML = `수매액: ${formatNumber(r.total)}원`;
     } else {
       const itemRows = ItemParser.parseItems(r.kilosText || '').items.map(item => `
-        <div>🐙 <b>${escapeHtml(item.name)}:</b> ${formatPurchaseItemQuantity(item)} × ${formatNumber(item.unitPrice)}원 = <b>${formatNumber(item.amount)}원</b></div>
+        <div>🐙 <b>${escapeHtml(item.name)}:</b> ${formatPurchaseItemCalculation(item)}</div>
       `).join('');
       detailHTML = `
         <div style="font-size:0.8rem; color:#555; background:#f5f6f8; padding:8px; border-radius:6px; margin-bottom:6px;">
@@ -244,8 +248,14 @@ function renderPurchaseRecords(records) {
 }
 
 function formatPurchaseItemQuantity(item) {
+  if (item.amountOnly) return '-';
   const quantity = Number(item.quantity).toLocaleString('ko-KR', { maximumFractionDigits: 3 });
   return `${quantity}${item.quantityUnit === '수량' ? '' : item.quantityUnit}`;
+}
+
+function formatPurchaseItemCalculation(item) {
+  if (item.amountOnly) return `<b>${formatNumber(item.amount)}원</b>`;
+  return `${formatPurchaseItemQuantity(item)} × ${formatNumber(item.unitPrice)}원 = <b>${formatNumber(item.amount)}원</b>`;
 }
 
 async function savePurchaseStatementSnapshot(id) {
