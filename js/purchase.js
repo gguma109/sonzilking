@@ -45,12 +45,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ---- 계산 ----
 function calculatePurchase() {
   const kilosText = document.getElementById('calc-kilos-pur').value;
-  const total = parseAndCalculateMath(kilosText);
+  const parsedItems = ItemParser.parseItems(kilosText);
+  const total = parsedItems.total;
 
   document.getElementById('preview-kilos-pur').textContent = formatNumber(total) + '원';
   document.getElementById('grand-total-pur').textContent = formatNumber(total);
 
-  return { kilos: 1, unitPrice: total, total }; // API 호환
+  return { kilos: 1, unitPrice: total, total, itemErrors: parsedItems.errors }; // API 호환
 }
 
 // ---- 수매 업체 목록 ----
@@ -70,6 +71,13 @@ async function savePurchase() {
   }
 
   const values = calculatePurchase();
+
+  if (document.getElementById('calc-kilos-pur').value.trim() && values.itemErrors.length) {
+    const error = values.itemErrors[0];
+    showToast(`❗ 품목 ${error.lineNumber}번째 줄: ${error.error}`, 'error');
+    document.getElementById('calc-kilos-pur').focus();
+    return;
+  }
 
   const record = {
     companyName,
@@ -202,9 +210,13 @@ function renderPurchaseRecords(records) {
     if (isOldRecord) {
       detailHTML = `수매액: ${formatNumber(r.total)}원`;
     } else {
+      const itemRows = ItemParser.parseItems(r.kilosText || '').items.map(item => `
+        <div>🐙 <b>${escapeHtml(item.name)}:</b> ${formatPurchaseItemQuantity(item)} × ${formatNumber(item.unitPrice)}원 = <b>${formatNumber(item.amount)}원</b></div>
+      `).join('');
       detailHTML = `
         <div style="font-size:0.8rem; color:#555; background:#f5f6f8; padding:8px; border-radius:6px; margin-bottom:6px;">
-          ${r.kilosText ? `<div>🐙 <b>입력:</b> ${escapeHtml(r.kilosText)} = ${formatNumber(r.total)}원</div>` : ''}
+          ${itemRows || (r.kilosText ? `<div>🐙 <b>입력:</b> ${escapeHtml(r.kilosText)} = ${formatNumber(r.total)}원</div>` : '')}
+          ${itemRows ? `<div style="margin-top:4px;"><b>품목 합계:</b> ${formatNumber(r.total)}원</div>` : ''}
         </div>
       `;
     }
@@ -229,6 +241,11 @@ function renderPurchaseRecords(records) {
       </div>
     </div>
   `}).join('');
+}
+
+function formatPurchaseItemQuantity(item) {
+  const quantity = Number(item.quantity).toLocaleString('ko-KR', { maximumFractionDigits: 3 });
+  return `${quantity}${item.quantityUnit === '수량' ? '' : item.quantityUnit}`;
 }
 
 async function savePurchaseStatementSnapshot(id) {

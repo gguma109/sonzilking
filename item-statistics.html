@@ -47,7 +47,7 @@
         </div>
         <button type="submit" class="btn-save item-statistics-search-button">통계 조회</button>
       </form>
-      <p class="item-statistics-help">입력한 여러 품목 중 가장 앞에 적은 품목의 계산금액만 집계합니다. 판매 부대비용과 수수료는 제외됩니다.</p>
+      <p class="item-statistics-help">줄마다 입력한 모든 품목을 각각 집계합니다. 판매 부대비용과 수수료는 제외됩니다.</p>
     </section>
 
     <section id="item-statistics-result" hidden>
@@ -96,14 +96,14 @@
     <section id="item-statistics-intro" class="item-statistics-intro">
       <span>🔎</span>
       <strong>조회할 품목을 검색해주세요.</strong>
-      <p>선택한 기간 동안 첫 번째 품목으로 입력된 판매와 수매를 비교해드립니다.</p>
+      <p>선택한 기간 동안 품목별 판매와 수매를 비교해드립니다.</p>
     </section>
   </main>
 
   <div class="toast-container" id="toast-container"></div>
   <script src="js/api.js?v=1.2.1"></script>
   <script src="js/auth.js"></script>
-  <script src="js/item_parser.js?v=1.3.0-test"></script>
-  <script src="js/item_statistics.js?v=1.3.0-test"></script>
+  <script src="js/item_parser.js?v=1.3.1-test"></script>
+  <script src="js/item_statistics.js?v=1.3.1-test"></script>
 </body>
 </html>

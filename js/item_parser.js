@@ -1,16 +1,26 @@
 (function attachItemParser(root) {
+  const QUANTITY_UNITS = [
+    ['kg', /(?:kg|키로|킬로)/i],
+    ['마리', /마리/],
+    ['미', /미/],
+    ['개', /개/],
+    ['박스', /(?:박스|상자)/],
+    ['팩', /팩/],
+    ['봉', /봉/],
+    ['통', /통/],
+    ['망', /망/]
+  ];
+
   function parseNumber(value) {
-    const match = String(value || '').match(/-?\d[\d,]*(?:\.\d+)?/);
-    if (!match) return 0;
+    const match = String(value || '').trim().match(/-?\d[\d,]*(?:\.\d+)?/);
+    if (!match) return null;
     const number = Number(match[0].replace(/,/g, ''));
-    return Number.isFinite(number) ? Math.max(0, number) : 0;
+    return Number.isFinite(number) && number >= 0 ? number : null;
   }
 
   function getQuantityUnit(value) {
     const text = String(value || '');
-    if (/마리/.test(text)) return '마리';
-    if (/(?:kg|키로|킬로)/i.test(text)) return 'kg';
-    return '수량';
+    return QUANTITY_UNITS.find(([, pattern]) => pattern.test(text))?.[0] || '수량';
   }
 
   function normalizeName(value) {
@@ -19,49 +29,61 @@
 
   function cleanName(value) {
     return String(value || '')
-      .replace(/[\s*×xX]+$/g, '')
-      .replace(/^[\s*×xX]+/g, '')
+      .replace(/[\s*×]+$/g, '')
+      .replace(/^[\s*×]+/g, '')
       .trim();
   }
 
-  function getFirstExpression(text) {
-    const firstLine = String(text || '').split(/\r?\n/).map(line => line.trim()).find(Boolean) || '';
-    return firstLine.split('+')[0].trim();
+  function stripWrittenAmount(value) {
+    return String(value || '').replace(/\s*=\s*[\d,]+(?:\.\d+)?\s*원?\s*$/, '').trim();
   }
 
-  function parseFirstItem(text) {
-    const expression = getFirstExpression(text);
-    if (!expression) return null;
+  function splitExpressions(text) {
+    const expressions = [];
+    String(text || '').split(/\r?\n/).forEach((line, lineIndex) => {
+      line.split('+').map(part => part.trim()).filter(Boolean).forEach(part => {
+        expressions.push({ expression: part, lineNumber: lineIndex + 1 });
+      });
+    });
+    return expressions;
+  }
 
-    const parts = expression.split(/[\*×]/).map(part => part.trim()).filter(Boolean);
+  function parseItemExpression(rawExpression, lineNumber = 1) {
+    const expression = stripWrittenAmount(rawExpression);
+    const parts = expression.split(/[\*×]/).map(part => part.trim());
     let name = '';
     let quantityText = '';
     let unitPriceText = '';
 
-    if (parts.length >= 3) {
-      name = cleanName(parts[0]);
-      quantityText = parts[1];
-      unitPriceText = parts[2];
-    } else if (parts.length >= 2) {
+    if (parts.length === 3) {
+      [name, quantityText, unitPriceText] = parts;
+    } else if (parts.length === 2) {
       const firstPart = parts[0];
       const numberMatches = [...firstPart.matchAll(/-?\d[\d,]*(?:\.\d+)?/g)];
       const quantityMatch = numberMatches[numberMatches.length - 1];
       if (quantityMatch) {
-        name = cleanName(firstPart.slice(0, quantityMatch.index));
+        name = firstPart.slice(0, quantityMatch.index);
         quantityText = firstPart.slice(quantityMatch.index);
-      } else {
-        name = cleanName(firstPart);
+        unitPriceText = parts[1];
       }
-      unitPriceText = parts[1];
-    } else {
-      const firstNumber = expression.search(/\d/);
-      name = cleanName(firstNumber >= 0 ? expression.slice(0, firstNumber) : expression);
     }
 
-    if (!name) return null;
+    name = cleanName(name);
     const quantity = parseNumber(quantityText);
     const unitPrice = parseNumber(unitPriceText);
+    const error = !name
+      ? '품목명이 없습니다.'
+      : quantity === null
+        ? '수량을 확인해주세요.'
+        : unitPrice === null
+          ? '단가를 확인해주세요.'
+          : '';
+
+    if (error) return { valid: false, lineNumber, expression: rawExpression, error };
+
     return {
+      valid: true,
+      lineNumber,
       name,
       key: normalizeName(name),
       quantity,
@@ -72,5 +94,22 @@
     };
   }
 
-  root.ItemParser = { parseFirstItem, normalizeName };
+  function parseItems(text) {
+    const parsed = splitExpressions(text).map(({ expression, lineNumber }) =>
+      parseItemExpression(expression, lineNumber)
+    );
+    const items = parsed.filter(item => item.valid);
+    const errors = parsed.filter(item => !item.valid);
+    return {
+      items,
+      errors,
+      total: items.reduce((sum, item) => sum + item.amount, 0)
+    };
+  }
+
+  function parseFirstItem(text) {
+    return parseItems(text).items[0] || null;
+  }
+
+  root.ItemParser = { parseItems, parseFirstItem, parseItemExpression, normalizeName };
 })(typeof window !== 'undefined' ? window : globalThis);

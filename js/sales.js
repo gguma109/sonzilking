@@ -78,7 +78,8 @@ function calculateSales() {
   const addText = document.getElementById('calc-add').value;
   const commissionRate = parseFloat(document.getElementById('commission-rate').value) || 0;
 
-  const kilosTotal = parseAndCalculateMath(kilosText);
+  const parsedItems = ItemParser.parseItems(kilosText);
+  const kilosTotal = parsedItems.total;
   const addTotal = parseAndCalculateMath(addText);
   // 수수료 및 총액 계산
   let commissionAmount = 0;
@@ -114,7 +115,8 @@ function calculateSales() {
     addTotal, 
     commissionRate, 
     commissionAmount, 
-    grandTotal 
+    grandTotal,
+    itemErrors: parsedItems.errors
   };
 }
 
@@ -154,6 +156,13 @@ async function saveSale() {
   }
 
   const values = calculateSales();
+
+  if (document.getElementById('calc-kilos').value.trim() && values.itemErrors.length) {
+    const error = values.itemErrors[0];
+    showToast(`❗ 품목 ${error.lineNumber}번째 줄: ${error.error}`, 'error');
+    document.getElementById('calc-kilos').focus();
+    return;
+  }
 
   const record = {
     companyName,
@@ -299,9 +308,13 @@ function renderSalesRecords(records) {
         ${r.addTotal > 0 ? `<br>부대비용: ${formatNumber(r.addTotal)}원` : ''}
         ${r.commissionRate > 0 ? `<br>수수료 ${r.commissionRate}% (+${formatNumber(r.commissionAmount)}원)` : ''}`;
     } else {
+      const itemRows = ItemParser.parseItems(r.kilosText || '').items.map(item => `
+        <div>🐟 <b>${escapeHtml(item.name)}:</b> ${formatItemQuantity(item)} × ${formatNumber(item.unitPrice)}원 = <b>${formatNumber(item.amount)}원</b></div>
+      `).join('');
       detailHTML = `
         <div style="font-size:0.8rem; color:#555; background:#f5f6f8; padding:8px; border-radius:6px; margin-bottom:6px;">
-          ${r.kilosText ? `<div>🐟 <b>품목:</b> ${escapeHtml(r.kilosText)} = ${formatNumber(r.kilosTotal)}원</div>` : ''}
+          ${itemRows || (r.kilosText ? `<div>🐟 <b>품목:</b> ${escapeHtml(r.kilosText)} = ${formatNumber(r.kilosTotal)}원</div>` : '')}
+          ${itemRows ? `<div style="margin-top:4px;"><b>품목 합계:</b> ${formatNumber(r.kilosTotal)}원</div>` : ''}
           ${r.addText ? `<div>📦 <b>부대비용:</b> ${escapeHtml(r.addText)} = ${formatNumber(r.addTotal)}원</div>` : ''}
           ${r.commissionRate > 0 ? `<div>🧾 <b>수수료:</b> ${r.commissionRate}% = ${formatNumber(r.commissionAmount)}원</div>` : ''}
         </div>
@@ -329,6 +342,11 @@ function renderSalesRecords(records) {
       </div>
     </div>
   `}).join('');
+}
+
+function formatItemQuantity(item) {
+  const quantity = Number(item.quantity).toLocaleString('ko-KR', { maximumFractionDigits: 3 });
+  return `${quantity}${item.quantityUnit === '수량' ? '' : item.quantityUnit}`;
 }
 
 function getStatementItems(record) {
@@ -528,6 +546,16 @@ let statementOutstandingBalance = null;
 
 function parseStatementItemLine(line) {
   const raw = String(line || '').trim();
+  const parsed = ItemParser.parseItemExpression(raw);
+  if (parsed.valid) {
+    return {
+      name: parsed.name,
+      quantity: formatItemQuantity(parsed),
+      unitPrice: parsed.unitPrice,
+      amount: parsed.amount,
+      raw: parsed.expression
+    };
+  }
   const expression = raw.replace(/\s*=\s*[\d,]+(?:\.\d+)?\s*원?\s*$/, '').trim();
   const match = expression.match(/^(.*?)\s+([\d,]+(?:\.\d+)?\s*(?:kg|킬로|미|개|마리|박스|상자|팩|봉|통|망)?)\s*\*\s*([\d,]+(?:\.\d+)?)\s*원?\s*$/i);
   const amount = match
@@ -547,7 +575,17 @@ function parseStatementItemLine(line) {
 
 function getStatementItems(record) {
   const lines = String(record.kilosText || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-  if (lines.length) return lines.map(parseStatementItemLine);
+  if (lines.length) {
+    const parsedItems = ItemParser.parseItems(record.kilosText || '').items;
+    if (parsedItems.length) return parsedItems.map(item => ({
+      name: item.name,
+      quantity: formatItemQuantity(item),
+      unitPrice: item.unitPrice,
+      amount: item.amount,
+      raw: item.expression
+    }));
+    return lines.map(parseStatementItemLine);
+  }
   return [{
     name: '판매품목', quantity: null, unitPrice: null,
     amount: Number(record.kilosTotal) || Number(record.total) || 0, raw: ''

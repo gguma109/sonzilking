@@ -26,15 +26,16 @@ async function loadItemStatisticsData() {
   }
 }
 
-function getParsedItem(record) {
-  return ItemParser.parseFirstItem(record.kilosText || '');
+function getParsedItems(record) {
+  return ItemParser.parseItems(record.kilosText || '').items;
 }
 
 function populateItemOptions() {
   const names = new Map();
   [...itemStatisticsSales, ...itemStatisticsPurchases].forEach(record => {
-    const item = getParsedItem(record);
-    if (item && !names.has(item.key)) names.set(item.key, item.name);
+    getParsedItems(record).forEach(item => {
+      if (!names.has(item.key)) names.set(item.key, item.name);
+    });
   });
   const datalist = document.getElementById('item-statistics-options');
   datalist.replaceChildren();
@@ -50,9 +51,10 @@ function getRecordDate(record) {
 function getMatchingEntries(records, type, itemKey, startDate, endDate) {
   return records.flatMap(record => {
     const date = getRecordDate(record);
-    const item = getParsedItem(record);
-    if (!item || item.key !== itemKey || !date || date < startDate || date > endDate) return [];
-    return [{ type, record, item, date }];
+    if (!date || date < startDate || date > endDate) return [];
+    return getParsedItems(record)
+      .filter(item => item.key === itemKey)
+      .map(item => ({ type, record, item, date }));
   });
 }
 

@@ -195,14 +195,14 @@ function getFormalStatementItems(record) {
   const fallbackAmount = Number(record.kilosTotal) || Number(record.total) || 0;
   const fallbackName = record.statementType === 'purchase' ? '수매품목' : '판매품목';
   if (!lines.length) return [{ name: fallbackName, quantity: '-', unitPrice: '-', amount: fallbackAmount }];
-  return lines.map((line, index) => {
-    const expression = line.replace(/\s*=\s*[\d,]+(?:\.\d+)?\s*원?\s*$/, '').trim();
-    const match = expression.match(/^(.*?)\s+([\d,]+(?:\.\d+)?\s*(?:kg|킬로|미|개|마리|박스|상자|팩|봉|통|망)?)\s*\*\s*([\d,]+(?:\.\d+)?)\s*원?\s*$/i);
-    if (!match) return { name: expression || fallbackName, quantity: '-', unitPrice: '-', amount: lines.length === 1 && index === 0 ? fallbackAmount : 0 };
-    const quantityNumber = Number(match[2].replace(/[^\d.]/g, ''));
-    const unitPrice = Number(match[3].replace(/,/g, ''));
-    return { name: match[1].trim(), quantity: match[2].replace(/\s+/g, ''), unitPrice, amount: quantityNumber * unitPrice };
-  });
+  const parsedItems = ItemParser.parseItems(record.kilosText || '').items;
+  if (!parsedItems.length) return [{ name: lines.join(' / ') || fallbackName, quantity: '-', unitPrice: '-', amount: fallbackAmount }];
+  return parsedItems.map(item => ({
+    name: item.name,
+    quantity: `${Number(item.quantity).toLocaleString('ko-KR', { maximumFractionDigits: 3 })}${item.quantityUnit === '수량' ? '' : item.quantityUnit}`,
+    unitPrice: item.unitPrice,
+    amount: item.amount
+  }));
 }
 
 function statementDateLabel(date) {
