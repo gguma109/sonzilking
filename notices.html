@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>공지사항 - 손질왕</title>
+  <meta name="description" content="손질왕 버전별 새 기능 및 수정사항 안내">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="page-header">
+    <a href="#" class="btn-back" aria-label="이전 화면" onclick="goBackOrHome(event)">←</a>
+    <a href="index.html" class="header-brand" aria-label="손질왕 메인 화면으로 이동"><img src="images/header-logo.svg" alt="손질왕" class="header-logo"></a>
+    <h1 class="page-title">공지사항</h1>
+    <button onclick="logout()" class="btn-del notice-logout">로그아웃</button>
+  </header>
+
+  <main class="page-body notice-page">
+    <section class="release-hero" aria-labelledby="release-current-title">
+      <div>
+        <span class="release-eyebrow">CURRENT VERSION</span>
+        <h2 id="release-current-title">현재 배포 버전</h2>
+        <p id="release-current-summary">최신 수정사항을 불러오고 있습니다.</p>
+      </div>
+      <div class="release-current-version">
+        <strong id="release-current-version">-</strong>
+        <span id="release-current-status">확인 중</span>
+      </div>
+    </section>
+
+    <section class="release-guide" aria-label="버전 안내">
+      <span>📌</span>
+      <p>손질왕이 수정될 때마다 버전과 배포일, 주요 변경사항을 이곳에 순서대로 안내합니다.</p>
+    </section>
+
+    <section aria-labelledby="release-history-title">
+      <div class="release-section-heading">
+        <div>
+          <span>UPDATE HISTORY</span>
+          <h2 id="release-history-title">업데이트 내역</h2>
+        </div>
+        <strong id="release-count">0개 버전</strong>
+      </div>
+      <div id="release-list" class="release-list"></div>
+    </section>
+  </main>
+
+  <div class="toast-container" id="toast-container"></div>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/releases.js"></script>
+  <script src="js/notices.js"></script>
+</body>
+</html>
