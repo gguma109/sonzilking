@@ -134,6 +134,35 @@ export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS });
 }
 
+// Build each company's cumulative unpaid sales once, rather than scanning
+// the complete sales table separately for every statement.
+export function attachPreviousBalances(records, sales, payments) {
+  const groups = new Map();
+  const paid = new Map(payments.map(row => [row.companyKey, Number(row.amount) || 0]));
+  for (const sale of sales) {
+    if (!groups.has(sale.companyKey)) groups.set(sale.companyKey, []);
+    groups.get(sale.companyKey).push(sale);
+  }
+  for (const rows of groups.values()) {
+    rows.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0);
+    let sum = 0;
+    for (const row of rows) { sum += Number(row.total) || 0; row.runningTotal = sum; }
+  }
+  return records.map(record => {
+    const { companyKey, sourceDate, sourceCreatedAt, ...result } = record;
+    if (record.statementType === 'purchase') return { ...result, previousBalance: null };
+    const rows = groups.get(companyKey) || [];
+    let lo = 0, hi = rows.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1;
+      const row = rows[mid];
+      if (row.date < sourceDate || (row.date === sourceDate && row.createdAt < sourceCreatedAt)) lo = mid + 1;
+      else hi = mid;
+    }
+    return { ...result, previousBalance: Math.max(0, (lo ? rows[lo - 1].runningTotal : 0) - (paid.get(companyKey) || 0)) };
+  });
+}
+
 export async function onRequestGet({ env, data }) {
   try {
     const db = getDB(env);
@@ -152,22 +181,19 @@ export async function onRequestGet({ env, data }) {
         COALESCE(s.commissionAmount, 0) AS commissionAmount,
         COALESCE(s.memo, p.memo, '') AS memo,
         COALESCE(s.total, p.total, st.total, 0) AS transactionTotal,
-        CASE WHEN st.saleId LIKE 'purchase:%' THEN NULL ELSE MAX(0,
-          COALESCE((SELECT SUM(priorSale.total) FROM sales priorSale
-            WHERE priorSale.userId = st.userId
-              AND TRIM(LOWER(priorSale.companyName)) = TRIM(LOWER(st.companyName))
-              AND priorSale.unpaid = 1
-              AND (priorSale.date < s.date OR (priorSale.date = s.date AND priorSale.createdAt < s.createdAt AND priorSale.id != s.id))), 0) -
-          COALESCE((SELECT SUM(amount) FROM payments
-            WHERE userId = st.userId AND TRIM(LOWER(companyName)) = TRIM(LOWER(st.companyName))), 0)
-        ) END AS previousBalance
+        TRIM(LOWER(st.companyName)) AS companyKey,
+        s.date AS sourceDate, s.createdAt AS sourceCreatedAt
       FROM statements st
       LEFT JOIN sales s ON st.saleId NOT LIKE 'purchase:%' AND s.id = st.saleId AND s.userId = st.userId
       LEFT JOIN purchases p ON st.saleId LIKE 'purchase:%' AND p.id = SUBSTR(st.saleId, 10) AND p.userId = st.userId
       WHERE st.userId = ? ORDER BY st.saleDate DESC, st.updatedAt DESC
     `)
       .bind(data.userId).all();
-    return Response.json({ success: true, data: results }, { headers: CORS });
+    const [sales, payments] = await Promise.all([
+      db.prepare('SELECT date, createdAt, total, TRIM(LOWER(companyName)) AS companyKey FROM sales WHERE userId = ? AND unpaid = 1').bind(data.userId).all(),
+      db.prepare('SELECT TRIM(LOWER(companyName)) AS companyKey, SUM(amount) AS amount FROM payments WHERE userId = ? GROUP BY TRIM(LOWER(companyName))').bind(data.userId).all()
+    ]);
+    return Response.json({ success: true, data: attachPreviousBalances(results, sales.results, payments.results) }, { headers: CORS });
   } catch (error) {
     return Response.json({ success: false, error: error.message }, { status: 500, headers: CORS });
   }
