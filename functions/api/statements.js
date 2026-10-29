@@ -69,14 +69,13 @@ function buildStoredPurchaseText(purchase, receiverName) {
 }
 
 async function backfillStatements(db, userId) {
-  const user = await db.prepare('SELECT name, nickname, username FROM users WHERE id = ?').bind(userId).first();
-  const supplierName = user?.nickname || user?.name || user?.username || '손질왕';
   const { results } = await db.prepare(`
     SELECT s.* FROM sales s
-    LEFT JOIN statements st ON st.userId = s.userId AND st.saleId = s.id
-    WHERE s.userId = ? AND st.id IS NULL
+    WHERE s.userId = ? AND NOT EXISTS (SELECT 1 FROM statements st WHERE st.userId = s.userId AND st.saleId = s.id)
   `).bind(userId).all();
   if (!results.length) return;
+  const user = await db.prepare('SELECT name, nickname, username FROM users WHERE id = ?').bind(userId).first();
+  const supplierName = user?.nickname || user?.name || user?.username || '손질왕';
   const now = new Date().toISOString();
   const statements = results.map(sale => db.prepare(`
     INSERT OR IGNORE INTO statements (id, userId, saleId, companyName, saleDate, total, content, createdAt, updatedAt)
@@ -86,14 +85,13 @@ async function backfillStatements(db, userId) {
 }
 
 async function backfillPurchaseStatements(db, userId) {
-  const user = await db.prepare('SELECT name, nickname, username FROM users WHERE id = ?').bind(userId).first();
-  const receiverName = user?.nickname || user?.name || user?.username || '손질왕';
   const { results } = await db.prepare(`
     SELECT p.* FROM purchases p
-    LEFT JOIN statements st ON st.userId = p.userId AND st.saleId = 'purchase:' || p.id
-    WHERE p.userId = ? AND st.id IS NULL
+    WHERE p.userId = ? AND NOT EXISTS (SELECT 1 FROM statements st WHERE st.userId = p.userId AND st.saleId = 'purchase:' || p.id)
   `).bind(userId).all();
   if (!results.length) return;
+  const user = await db.prepare('SELECT name, nickname, username FROM users WHERE id = ?').bind(userId).first();
+  const receiverName = user?.nickname || user?.name || user?.username || '손질왕';
   const now = new Date().toISOString();
   const statements = results.map(purchase => db.prepare(`
     INSERT OR IGNORE INTO statements (id, userId, saleId, companyName, saleDate, total, content, createdAt, updatedAt)
@@ -106,28 +104,17 @@ async function backfillPurchaseStatements(db, userId) {
   await db.batch(statements);
 }
 
+// 원본 판매·수매가 사라진 명세서를 지운다. 중복은 UNIQUE(userId, saleId)가 막는다.
 async function cleanupStatements(db, userId) {
   await db.prepare(`
     DELETE FROM statements
     WHERE userId = ?
       AND (
-        (saleId NOT LIKE 'purchase:%' AND saleId NOT IN (SELECT id FROM sales WHERE userId = ?))
+        (saleId NOT LIKE 'purchase:%' AND NOT EXISTS (SELECT 1 FROM sales s WHERE s.id = statements.saleId AND s.userId = statements.userId))
         OR
-        (saleId LIKE 'purchase:%' AND SUBSTR(saleId, 10) NOT IN (SELECT id FROM purchases WHERE userId = ?))
+        (saleId LIKE 'purchase:%' AND NOT EXISTS (SELECT 1 FROM purchases p WHERE p.id = SUBSTR(statements.saleId, 10) AND p.userId = statements.userId))
       )
-  `).bind(userId, userId, userId).run();
-
-  await db.prepare(`
-    DELETE FROM statements
-    WHERE userId = ? AND id NOT IN (
-      SELECT id FROM (
-        SELECT id, ROW_NUMBER() OVER (
-          PARTITION BY saleId ORDER BY updatedAt DESC, createdAt DESC, id DESC
-        ) AS rowNumber
-        FROM statements WHERE userId = ?
-      ) ranked WHERE rowNumber = 1
-    )
-  `).bind(userId, userId).run();
+  `).bind(userId).run();
 }
 
 export async function onRequestOptions() {
@@ -163,37 +150,92 @@ export function attachPreviousBalances(records, sales, payments) {
   });
 }
 
-export async function onRequestGet({ env, data }) {
+const STATEMENT_SELECT = `
+  SELECT st.*,
+    CASE WHEN st.saleId LIKE 'purchase:%' THEN 'purchase' ELSE 'sale' END AS statementType,
+    COALESCE(s.kilosText, p.kilosText, '') AS kilosText,
+    COALESCE(s.kilosTotal, p.total, 0) AS kilosTotal,
+    COALESCE(s.addText, '') AS addText,
+    COALESCE(s.addTotal, 0) AS addTotal,
+    COALESCE(s.commissionRate, 0) AS commissionRate,
+    COALESCE(s.commissionAmount, 0) AS commissionAmount,
+    COALESCE(s.memo, p.memo, '') AS memo,
+    COALESCE(s.total, p.total, st.total, 0) AS transactionTotal,
+    TRIM(LOWER(st.companyName)) AS companyKey,
+    s.date AS sourceDate, s.createdAt AS sourceCreatedAt
+  FROM statements st
+  LEFT JOIN sales s ON st.saleId NOT LIKE 'purchase:%' AND s.id = st.saleId AND s.userId = st.userId
+  LEFT JOIN purchases p ON st.saleId LIKE 'purchase:%' AND p.id = SUBSTR(st.saleId, 10) AND p.userId = st.userId`;
+
+// 목록 필터: 구분(판매/수매)과 거래처명 검색
+function statementFilter(url) {
+  const type = url.searchParams.get('type');
+  const query = String(url.searchParams.get('q') || '').trim();
+  const clauses = ['st.userId = ?'];
+  const params = [];
+  if (type === 'sale') clauses.push("st.saleId NOT LIKE 'purchase:%'");
+  if (type === 'purchase') clauses.push("st.saleId LIKE 'purchase:%'");
+  if (query) {
+    clauses.push("st.companyName LIKE ? ESCAPE '\\'");
+    params.push(`%${query.replace(/[\\%_]/g, char => `\\${char}`)}%`);
+  }
+  return { where: clauses.join(' AND '), params };
+}
+
+async function loadBalanceSources(db, userId, records) {
+  if (!records.some(record => record.statementType === 'sale')) return { sales: [], payments: [] };
+  const [sales, payments] = await Promise.all([
+    db.prepare('SELECT date, createdAt, total, TRIM(LOWER(companyName)) AS companyKey FROM sales WHERE userId = ? AND unpaid = 1').bind(userId).all(),
+    db.prepare('SELECT TRIM(LOWER(companyName)) AS companyKey, SUM(amount) AS amount FROM payments WHERE userId = ? GROUP BY TRIM(LOWER(companyName))').bind(userId).all()
+  ]);
+  return { sales: sales.results, payments: payments.results };
+}
+
+// ?limit=&offset= 으로 최근 명세서부터 나눠 읽는다. maintain=1일 때만 누락·고아 명세서를 정리한다.
+// limit이 없으면 예전처럼 전체를 돌려준다(이전 화면 캐시 호환).
+export async function onRequestGet({ env, request, data }) {
   try {
     const db = getDB(env);
+    const url = new URL(request.url);
+    const limit = Math.min(100, Math.max(0, Number.parseInt(url.searchParams.get('limit'), 10) || 0));
+    const offset = Math.max(0, Number.parseInt(url.searchParams.get('offset'), 10) || 0);
+    const paged = limit > 0;
     await ensureTable(db);
-    await cleanupStatements(db, data.userId);
-    await backfillStatements(db, data.userId);
-    await backfillPurchaseStatements(db, data.userId);
-    const { results } = await db.prepare(`
-      SELECT st.*,
-        CASE WHEN st.saleId LIKE 'purchase:%' THEN 'purchase' ELSE 'sale' END AS statementType,
-        COALESCE(s.kilosText, p.kilosText, '') AS kilosText,
-        COALESCE(s.kilosTotal, p.total, 0) AS kilosTotal,
-        COALESCE(s.addText, '') AS addText,
-        COALESCE(s.addTotal, 0) AS addTotal,
-        COALESCE(s.commissionRate, 0) AS commissionRate,
-        COALESCE(s.commissionAmount, 0) AS commissionAmount,
-        COALESCE(s.memo, p.memo, '') AS memo,
-        COALESCE(s.total, p.total, st.total, 0) AS transactionTotal,
-        TRIM(LOWER(st.companyName)) AS companyKey,
-        s.date AS sourceDate, s.createdAt AS sourceCreatedAt
-      FROM statements st
-      LEFT JOIN sales s ON st.saleId NOT LIKE 'purchase:%' AND s.id = st.saleId AND s.userId = st.userId
-      LEFT JOIN purchases p ON st.saleId LIKE 'purchase:%' AND p.id = SUBSTR(st.saleId, 10) AND p.userId = st.userId
-      WHERE st.userId = ? ORDER BY st.saleDate DESC, st.updatedAt DESC
-    `)
-      .bind(data.userId).all();
-    const [sales, payments] = await Promise.all([
-      db.prepare('SELECT date, createdAt, total, TRIM(LOWER(companyName)) AS companyKey FROM sales WHERE userId = ? AND unpaid = 1').bind(data.userId).all(),
-      db.prepare('SELECT TRIM(LOWER(companyName)) AS companyKey, SUM(amount) AS amount FROM payments WHERE userId = ? GROUP BY TRIM(LOWER(companyName))').bind(data.userId).all()
-    ]);
-    return Response.json({ success: true, data: attachPreviousBalances(results, sales.results, payments.results) }, { headers: CORS });
+    if (!paged || url.searchParams.get('maintain') === '1') {
+      await cleanupStatements(db, data.userId);
+      await backfillStatements(db, data.userId);
+      await backfillPurchaseStatements(db, data.userId);
+    }
+
+    const { where, params } = statementFilter(url);
+    const pageSql = `${STATEMENT_SELECT} WHERE ${where} ORDER BY st.saleDate DESC, st.updatedAt DESC, st.id DESC${paged ? ' LIMIT ? OFFSET ?' : ''}`;
+    const { results } = await db.prepare(pageSql)
+      .bind(data.userId, ...params, ...(paged ? [limit + 1, offset] : [])).all();
+    const hasMore = paged && results.length > limit;
+    const records = hasMore ? results.slice(0, limit) : results;
+
+    const focusId = String(url.searchParams.get('focus') || '');
+    let focused = null;
+    if (focusId && !records.some(record => record.id === focusId)) {
+      focused = await db.prepare(`${STATEMENT_SELECT} WHERE st.userId = ? AND st.id = ?`).bind(data.userId, focusId).first();
+    }
+
+    let total = null;
+    if (paged && offset === 0) {
+      const count = await db.prepare(`SELECT COUNT(*) AS count FROM statements st WHERE ${where}`).bind(data.userId, ...params).first();
+      total = Number(count?.count) || 0;
+    }
+
+    const all = focused ? [...records, focused] : records;
+    const { sales, payments } = await loadBalanceSources(db, data.userId, all);
+    const withBalances = attachPreviousBalances(all, sales, payments);
+    return Response.json({
+      success: true,
+      data: focused ? withBalances.slice(0, -1) : withBalances,
+      focused: focused ? withBalances[withBalances.length - 1] : null,
+      hasMore,
+      total
+    }, { headers: CORS });
   } catch (error) {
     return Response.json({ success: false, error: error.message }, { status: 500, headers: CORS });
   }

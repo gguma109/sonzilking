@@ -61,9 +61,10 @@ export async function onRequestDelete({ env, params, data }) {
     const { id } = params;
     const userId = data.userId;
 
-    const res = await db.prepare('DELETE FROM purchases WHERE id = ? AND userId = ?')
-      .bind(id, userId)
-      .run();
+    await db.batch([
+      db.prepare('DELETE FROM purchases WHERE id = ? AND userId = ?').bind(id, userId),
+      db.prepare('DELETE FROM statements WHERE userId = ? AND saleId = ?').bind(userId, `purchase:${id}`)
+    ]);
     return Response.json({ success: true }, { headers: CORS });
   } catch (e) {
     return Response.json({ success: false, error: e.message }, { status: 500, headers: CORS });

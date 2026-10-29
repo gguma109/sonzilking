@@ -104,5 +104,7 @@ git push -u origin main
    - Production: `sonzilkingdb`
    - Preview: `sonzilking-test`
 5. 테스트 DB를 처음 만들었거나 스키마를 갱신할 때 `npm run init-db:test`를 실행합니다.
+   - 기존 DB에는 회원별 조회 인덱스(`migration4_read_indexes.sql`)를 한 번 적용합니다. D1 무료 읽기 한도(하루 500만 행)를 아끼는 데 필요합니다.
+     `npx wrangler d1 execute sonzilking-test --remote --file=migration4_read_indexes.sql` (운영은 `sonzilkingdb`에 승인 후 적용)
 6. **재배포**:
    - 변경된 설정을 적용하기 위해 **[Deployments]** 탭에서 **[Retry deployment]**를 클릭하거나 새 커밋을 GitHub에 푸시(Push)하면 자동으로 재배포 및 KV 연동이 완료됩니다!

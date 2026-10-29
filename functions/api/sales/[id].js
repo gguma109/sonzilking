@@ -71,9 +71,11 @@ export async function onRequestDelete({ env, params, data }) {
     const { id } = params;
     const userId = data.userId;
 
-    const res = await db.prepare('DELETE FROM sales WHERE id = ? AND userId = ?')
-      .bind(id, userId)
-      .run();
+    // 연결된 거래명세서도 함께 지워, 명세서 조회 때마다 고아 정리를 하지 않아도 되게 한다.
+    await db.batch([
+      db.prepare('DELETE FROM sales WHERE id = ? AND userId = ?').bind(id, userId),
+      db.prepare("DELETE FROM statements WHERE userId = ? AND saleId = ?").bind(userId, id)
+    ]);
     return Response.json({ success: true }, { headers: CORS });
   } catch (e) {
     return Response.json({ success: false, error: e.message }, { status: 500, headers: CORS });

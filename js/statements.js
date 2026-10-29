@@ -1,52 +1,103 @@
+const STATEMENTS_PAGE_SIZE = 20;
 let allStatements = [];
 let previewStatementId = null;
 let statementProfile = {};
+let statementsTotal = 0;
+let statementsHasMore = false;
+let statementsServerCount = 0;
+let statementsLoadRequest = 0;
+let statementsSearchTimer = null;
+let statementsFocusedExtraId = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  document.getElementById('statements-search').addEventListener('input', filterStatements);
-  document.getElementById('statements-type').addEventListener('change', filterStatements);
+  document.getElementById('statements-search').addEventListener('input', () => {
+    clearTimeout(statementsSearchTimer);
+    statementsSearchTimer = setTimeout(() => loadStatements(), 300);
+  });
+  document.getElementById('statements-type').addEventListener('change', () => loadStatements());
   document.getElementById('close-statement-image-preview').addEventListener('click', closeStatementImagePreview);
   document.getElementById('save-previewed-statement').addEventListener('click', () => saveStatementImage(previewStatementId));
   document.getElementById('statement-image-preview-modal').addEventListener('click', event => {
     if (event.target.id === 'statement-image-preview-modal') closeStatementImagePreview();
   });
-  await loadStatements();
+  try { statementProfile = (await API.get('profile')).user || {}; } catch {}
+  await loadStatements({ initial: true });
 });
 
-async function loadStatements() {
+function prepareStatement(record) {
+  const total = record.statementType === 'sale'
+    ? (Number(record.transactionTotal) || 0) + (Number(record.previousBalance) || 0)
+    : Number(record.total) || 0;
+  return {
+    ...record,
+    total,
+    content: normalizeStatementContent(
+      record.content,
+      record.statementType,
+      record.previousBalance,
+      record.transactionTotal
+    )
+  };
+}
+
+// 최근 명세서부터 STATEMENTS_PAGE_SIZE건씩 읽는다. append면 '더 보기'로 이어서 읽는다.
+async function loadStatements({ initial = false, append = false } = {}) {
   const container = document.getElementById('statements-list');
+  const requestId = ++statementsLoadRequest;
+  const focusId = initial ? sessionStorage.getItem('statement-focus-id') : '';
+  const params = new URLSearchParams({
+    limit: String(STATEMENTS_PAGE_SIZE),
+    offset: String(append ? statementsServerCount : 0),
+    type: document.getElementById('statements-type').value,
+    q: document.getElementById('statements-search').value.trim()
+  });
+  if (initial) params.set('maintain', '1');
+  if (focusId) params.set('focus', focusId);
+  if (!append) container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   try {
-    const [response, profileResponse] = await Promise.all([API.get('statements'), API.get('profile')]);
-    statementProfile = profileResponse.user || {};
-    allStatements = (response.data || []).map(record => {
-      const total = record.statementType === 'sale'
-        ? (Number(record.transactionTotal) || 0) + (Number(record.previousBalance) || 0)
-        : Number(record.total) || 0;
-      return {
-        ...record,
-        total,
-        content: normalizeStatementContent(
-          record.content,
-          record.statementType,
-          record.previousBalance,
-          record.transactionTotal
-        )
-      };
-    });
-    filterStatements();
-    focusRequestedStatement();
+    const response = await API.get(`statements?${params.toString()}`);
+    if (requestId !== statementsLoadRequest) return;
+    const page = (response.data || []).map(prepareStatement);
+    if (append) {
+      const loadedIds = new Set(allStatements.map(record => record.id));
+      allStatements = allStatements.concat(page.filter(record => !loadedIds.has(record.id)));
+      statementsServerCount += page.length;
+    } else {
+      allStatements = page;
+      statementsServerCount = page.length;
+      statementsTotal = Number(response.total) || page.length;
+      statementsFocusedExtraId = response.focused?.id || null;
+      if (response.focused) allStatements.unshift(prepareStatement(response.focused));
+    }
+    statementsHasMore = Boolean(response.hasMore);
+    renderStatements(allStatements);
+    if (initial) focusRequestedStatement();
   } catch (error) {
+    if (requestId !== statementsLoadRequest) return;
+    if (append) {
+      showToast('❌ 거래명세서를 더 불러오지 못했습니다: ' + error.message, 'error');
+      return;
+    }
     container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">거래명세서를 불러오지 못했습니다.<br>${escapeHtml(error.message)}</div></div>`;
   }
 }
 
+async function loadMoreStatements(button) {
+  button.disabled = true;
+  button.textContent = '불러오는 중...';
+  await loadStatements({ append: true });
+}
+
 function renderStatements(records) {
-  document.getElementById('statements-count').textContent = `${records.length}건`;
+  document.getElementById('statements-count').textContent = `${Math.max(statementsTotal, records.length)}건`;
   const container = document.getElementById('statements-list');
   if (!records.length) {
     container.innerHTML = '<div class="empty-state"><div class="empty-icon">📄</div><div class="empty-text">저장된 거래명세서가 없습니다.<br>판매·수매 기록을 저장하면 자동으로 생성됩니다.</div></div>';
     return;
   }
+  const moreButton = statementsHasMore
+    ? `<button type="button" class="statements-load-more" onclick="loadMoreStatements(this)">더 보기 (${records.length} / ${Math.max(statementsTotal, records.length)}건)</button>`
+    : '';
   container.innerHTML = records.map(record => `
     <article class="record-item statement-text-card" id="statement-${record.id}">
       <div class="record-header">
@@ -61,7 +112,7 @@ function renderStatements(records) {
         <button class="btn-save" onclick="saveStatementImage('${record.id}')">사진으로 저장</button>
         <button class="btn-delete" onclick="deleteStatement('${record.id}')">삭제</button>
       </div>
-    </article>`).join('');
+    </article>`).join('') + moreButton;
 }
 
 function normalizeStatementContent(content, statementType = 'sale', previousBalance = null, transactionTotal = null) {
@@ -104,17 +155,6 @@ function normalizeStatementContent(content, statementType = 'sale', previousBala
   const remaining = lines.filter((_, index) => !identityIndexes.includes(index));
   remaining.splice(insertAt, 0, ...supplierLines, receiverLine);
   return remaining.join('\n');
-}
-
-function filterStatements() {
-  const query = document.getElementById('statements-search').value.trim().toLowerCase();
-  const type = document.getElementById('statements-type').value;
-  const filtered = allStatements.filter(record => {
-    const matchesType = type === 'all' || record.statementType === type;
-    const matchesQuery = !query || String(record.companyName || '').toLowerCase().includes(query);
-    return matchesType && matchesQuery;
-  });
-  renderStatements(filtered);
 }
 
 function focusRequestedStatement() {
@@ -299,7 +339,11 @@ async function deleteStatement(id) {
   try {
     await API.del('statements', id);
     showToast('🗑️ 거래명세서를 삭제했습니다.');
-    await loadStatements();
+    allStatements = allStatements.filter(record => record.id !== id);
+    // 페이지 밖에서 따로 불러온 명세서는 서버 페이지 위치(offset)에 포함되지 않는다.
+    if (id !== statementsFocusedExtraId) statementsServerCount = Math.max(0, statementsServerCount - 1);
+    statementsTotal = Math.max(0, statementsTotal - 1);
+    renderStatements(allStatements);
   } catch (error) {
     showToast('❌ 삭제 실패: ' + error.message, 'error');
   }

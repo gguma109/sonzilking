@@ -40,7 +40,7 @@ async function showAdminMenuIfAllowed() {
   const adminCard = document.getElementById('btn-admin');
   if (!adminCard || !localStorage.getItem('token')) return;
   try {
-    const response = await API.get('admin/users');
+    const response = await API.get('admin/users?check=1');
     if (response.isAdmin) adminCard.style.display = '';
   } catch {
     adminCard.style.display = 'none';

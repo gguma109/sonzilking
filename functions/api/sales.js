@@ -18,13 +18,30 @@ export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS });
 }
 
-export async function onRequestGet({ env, data }) {
+// ?from=YYYY-MM-DD&before=YYYY-MM-DD 로 기간을 주면 그 기간만 읽는다(before는 미포함).
+export function periodQuery(table, url) {
+  const from = url.searchParams.get('from') || '';
+  const before = url.searchParams.get('before') || '';
+  const valid = value => /^\d{4}-\d{2}-\d{2}$/.test(value);
+  if (!valid(from) || !valid(before)) {
+    return { sql: `SELECT * FROM ${table} WHERE userId = ? ORDER BY date DESC, createdAt DESC`, params: [] };
+  }
+  // 두 조건을 나눠야 (userId, date, createdAt) 인덱스의 범위 검색을 각각 쓴다.
+  return {
+    sql: `SELECT * FROM ${table} WHERE userId = ?1 AND date >= ?2 AND date < ?3
+      UNION ALL
+      SELECT * FROM ${table} WHERE userId = ?1 AND date = '' AND createdAt >= ?2 AND createdAt < ?3
+      ORDER BY date DESC, createdAt DESC`,
+    params: [from, before]
+  };
+}
+
+export async function onRequestGet({ env, request, data }) {
   try {
     const db = getDB(env);
     const userId = data.userId;
-    const { results } = await db.prepare(
-      "SELECT * FROM sales WHERE userId = ? ORDER BY date DESC, createdAt DESC"
-    ).bind(userId).all();
+    const { sql, params } = periodQuery('sales', new URL(request.url));
+    const { results } = await db.prepare(sql).bind(userId, ...params).all();
 
     // D1에서는 boolean이 1 또는 0으로 저장되므로 JS boolean으로 가공
     const responseData = results.map(r => ({

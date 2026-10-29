@@ -4,6 +4,8 @@
 // POST /api/purchases  → 수매 기록 저장 (D1)
 // ===================================================
 
+import { periodQuery } from './sales.js';
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
@@ -18,13 +20,12 @@ export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS });
 }
 
-export async function onRequestGet({ env, data }) {
+export async function onRequestGet({ env, request, data }) {
   try {
     const db = getDB(env);
     const userId = data.userId;
-    const { results } = await db.prepare(
-      "SELECT * FROM purchases WHERE userId = ? ORDER BY date DESC, createdAt DESC"
-    ).bind(userId).all();
+    const { sql, params } = periodQuery('purchases', new URL(request.url));
+    const { results } = await db.prepare(sql).bind(userId, ...params).all();
 
     return Response.json(
       { success: true, data: results },

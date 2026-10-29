@@ -16,8 +16,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('sales-summary-month').value = getTodayDate().slice(0, 7);
   document.getElementById('sales-summary-day').value = getTodayDate();
   document.getElementById('sales-summary-period').addEventListener('change', syncSalesSummaryPeriod);
-  document.getElementById('sales-summary-month').addEventListener('change', updateMonthlySalesSummary);
-  document.getElementById('sales-summary-day').addEventListener('change', updateMonthlySalesSummary);
+  document.getElementById('sales-summary-month').addEventListener('change', loadSalesRecords);
+  document.getElementById('sales-summary-day').addEventListener('change', loadSalesRecords);
 
   // 계산기 텍스트 에어리어 이벤트
   ['calc-kilos', 'calc-add', 'commission-rate'].forEach(id => {
@@ -246,14 +246,23 @@ function editSaleRecord(id) {
 }
 
 // ---- 판매 기록 로드/렌더링 ----
+let salesLoadRequest = 0;
+
+// 선택한 월·일의 기록만 서버에서 읽는다.
 async function loadSalesRecords() {
   const container = document.getElementById('records-list');
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  const period = document.getElementById('sales-summary-period').value;
+  const selected = document.getElementById(period === 'day' ? 'sales-summary-day' : 'sales-summary-month').value;
+  const range = getPeriodRangeQuery(period, selected);
+  const requestId = ++salesLoadRequest;
   try {
-    const data = await API.get('sales');
+    const data = range ? await API.get(`sales?${range}`) : { data: [] };
+    if (requestId !== salesLoadRequest) return;
     allSalesRecords = data.data || [];
     updateMonthlySalesSummary();
   } catch {
+    if (requestId !== salesLoadRequest) return;
     container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">기록을 불러올 수 없습니다</div></div>`;
   }
 }
@@ -290,7 +299,7 @@ function syncSalesSummaryPeriod() {
   const label = document.getElementById('sales-summary-date-label');
   label.textContent = isDay ? '조회 날짜' : '조회 월';
   label.htmlFor = isDay ? 'sales-summary-day' : 'sales-summary-month';
-  updateMonthlySalesSummary();
+  loadSalesRecords();
 }
 
 function renderSalesRecords(records) {
@@ -722,18 +731,6 @@ async function saveStatementSnapshot(record, suppliedBalance) {
   }
 }
 
-async function refreshSalesStatementsForCompany(companyName) {
-  const normalizedCompanyName = String(companyName || '').trim();
-  if (!normalizedCompanyName) return;
-  const companyRecords = allSalesRecords.filter(record =>
-    String(record.companyName || '').trim() === normalizedCompanyName
-  );
-  await Promise.all(companyRecords.map(async record => {
-    const balance = await getStatementBalance(record);
-    await saveStatementSnapshot(record, balance);
-  }));
-}
-
 function saveSalesStatementImage() {
   const record = statementSalesRecord;
   if (!record) return;
@@ -1047,8 +1044,7 @@ async function updatePayment(id) {
     return;
   }
   try {
-    const response = await API.put(`payments/${id}`, { amount });
-    await refreshSalesStatementsForCompany(response.companyName);
+    await API.put(`payments/${id}`, { amount });
     showToast('✅ 수납 금액을 수정했습니다.');
     await loadUnpaidRecords();
   } catch (error) {
@@ -1059,8 +1055,7 @@ async function updatePayment(id) {
 async function deletePayment(id) {
   if (!confirm('이 수납 기록을 삭제하시겠습니까?')) return;
   try {
-    const response = await API.del('payments', id);
-    await refreshSalesStatementsForCompany(response.companyName);
+    await API.del('payments', id);
     showToast('🗑️ 수납 기록을 삭제했습니다.');
     await loadUnpaidRecords();
   } catch (error) {
@@ -1092,7 +1087,6 @@ async function submitPayment(recordIndex, fullPayment = false) {
 
   try {
     await API.post('payments', { companyName, amount, memo: actionLabel });
-    await refreshSalesStatementsForCompany(companyName);
     showToast(fullPayment ? '✅ 완납 처리되었습니다.' : '💵 일부 수납이 기록되었습니다.');
     await loadUnpaidRecords(); // 뷰 리로드
   } catch (e) {

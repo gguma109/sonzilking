@@ -11,8 +11,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('purchase-summary-month').value = getTodayDate().slice(0, 7);
   document.getElementById('purchase-summary-day').value = getTodayDate();
   document.getElementById('purchase-summary-period').addEventListener('change', syncPurchaseSummaryPeriod);
-  document.getElementById('purchase-summary-month').addEventListener('change', updateMonthlyPurchaseSummary);
-  document.getElementById('purchase-summary-day').addEventListener('change', updateMonthlyPurchaseSummary);
+  document.getElementById('purchase-summary-month').addEventListener('change', loadPurchaseRecords);
+  document.getElementById('purchase-summary-day').addEventListener('change', loadPurchaseRecords);
 
   document.getElementById('calc-kilos-pur').addEventListener('input', calculatePurchase);
   document.getElementById('btn-save-purchase').addEventListener('click', savePurchase);
@@ -149,15 +149,24 @@ function editPurchaseRecord(id) {
 }
 
 // ---- 기록 로드 ----
+let purchaseLoadRequest = 0;
+
+// 선택한 월·일의 기록만 서버에서 읽는다.
 async function loadPurchaseRecords() {
   const container = document.getElementById('records-list-pur');
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  const period = document.getElementById('purchase-summary-period').value;
+  const selected = document.getElementById(period === 'day' ? 'purchase-summary-day' : 'purchase-summary-month').value;
+  const range = getPeriodRangeQuery(period, selected);
+  const requestId = ++purchaseLoadRequest;
 
   try {
-    const data = await API.get('purchases');
+    const data = range ? await API.get(`purchases?${range}`) : { data: [] };
+    if (requestId !== purchaseLoadRequest) return;
     allPurchaseRecords = data.data || [];
     updateMonthlyPurchaseSummary();
   } catch {
+    if (requestId !== purchaseLoadRequest) return;
     container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">기록을 불러올 수 없습니다</div></div>`;
   }
 }
@@ -194,7 +203,7 @@ function syncPurchaseSummaryPeriod() {
   const label = document.getElementById('purchase-summary-date-label');
   label.textContent = isDay ? '조회 날짜' : '조회 월';
   label.htmlFor = isDay ? 'purchase-summary-day' : 'purchase-summary-month';
-  updateMonthlyPurchaseSummary();
+  loadPurchaseRecords();
 }
 
 // ---- 기록 렌더링 ----

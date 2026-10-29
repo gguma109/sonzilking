@@ -91,3 +91,11 @@ CREATE TABLE IF NOT EXISTS statements (
   updatedAt TEXT NOT NULL,
   UNIQUE(userId, saleId)
 );
+
+-- 회원별 조회용 인덱스 (migration4_read_indexes.sql과 같음)
+CREATE INDEX IF NOT EXISTS idx_sales_user_date ON sales(userId, date, createdAt);
+CREATE INDEX IF NOT EXISTS idx_sales_user_company ON sales(userId, companyName);
+CREATE INDEX IF NOT EXISTS idx_purchases_user_date ON purchases(userId, date, createdAt);
+CREATE INDEX IF NOT EXISTS idx_payments_user_company ON payments(userId, companyName);
+CREATE INDEX IF NOT EXISTS idx_statements_user_date ON statements(userId, saleDate, updatedAt, id);
+CREATE INDEX IF NOT EXISTS idx_notes_user ON notes(userId, createdAt);

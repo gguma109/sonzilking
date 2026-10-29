@@ -18,28 +18,47 @@ async function getAccess(db, userId) {
   return { owner, actor, accessRole };
 }
 
-export async function onRequestGet({ env, data }) {
+// 테이블마다 회원별 건수를 한 번에 센다(회원 수만큼 반복해서 세지 않음).
+async function countByUser(db, table) {
+  const { results } = await db.prepare(`SELECT userId, COUNT(*) AS count FROM ${table} GROUP BY userId`).all();
+  return new Map(results.map(row => [row.userId, Number(row.count) || 0]));
+}
+
+export async function onRequestGet({ env, request, data }) {
   try {
     const db = getDB(env);
     const { owner, actor, accessRole } = await getAccess(db, data.userId);
     if (!owner || !actor || accessRole === 'member') {
       return Response.json({ success: false, isAdmin: false, error: '관리자 또는 운영자만 접근할 수 있습니다.' }, { status: 403, headers: CORS });
     }
-    const { results } = await db.prepare(`
-      SELECT u.id, u.username, u.name, u.nickname, u.recoveryEmail, u.role, u.createdAt,
-        (SELECT COUNT(*) FROM sales WHERE userId = u.id) AS salesCount,
-        (SELECT COUNT(*) FROM purchases WHERE userId = u.id) AS purchasesCount,
-        (SELECT COUNT(*) FROM payments WHERE userId = u.id) AS paymentsCount,
-        (SELECT COUNT(*) FROM notes WHERE userId = u.id) AS notesCount,
-        (SELECT COUNT(*) FROM statements WHERE userId = u.id) AS statementsCount
-      FROM users u ORDER BY u.createdAt ASC, u.id ASC
-    `).all();
-    const users = results.map(user => ({
-      ...user,
-      role: user.id === owner.id ? 'owner' : user.role === 'operator' ? 'operator' : 'member',
-      isOwner: user.id === owner.id,
-      totalRecords: Number(user.salesCount) + Number(user.purchasesCount) + Number(user.paymentsCount) + Number(user.notesCount) + Number(user.statementsCount)
-    }));
+    // 메인 화면은 관리자 메뉴 표시 여부만 필요하다.
+    if (new URL(request.url).searchParams.get('check') === '1') {
+      return Response.json({ success: true, isAdmin: true, accessRole, currentUserId: actor.id }, { headers: CORS });
+    }
+    const [{ results }, sales, purchases, payments, notes, statements] = await Promise.all([
+      db.prepare('SELECT id, username, name, nickname, recoveryEmail, role, createdAt FROM users ORDER BY createdAt ASC, id ASC').all(),
+      countByUser(db, 'sales'),
+      countByUser(db, 'purchases'),
+      countByUser(db, 'payments'),
+      countByUser(db, 'notes'),
+      countByUser(db, 'statements')
+    ]);
+    const users = results.map(user => {
+      const counts = {
+        salesCount: sales.get(user.id) || 0,
+        purchasesCount: purchases.get(user.id) || 0,
+        paymentsCount: payments.get(user.id) || 0,
+        notesCount: notes.get(user.id) || 0,
+        statementsCount: statements.get(user.id) || 0
+      };
+      return {
+        ...user,
+        ...counts,
+        role: user.id === owner.id ? 'owner' : user.role === 'operator' ? 'operator' : 'member',
+        isOwner: user.id === owner.id,
+        totalRecords: Object.values(counts).reduce((sum, count) => sum + count, 0)
+      };
+    });
     return Response.json({ success: true, isAdmin: true, accessRole, currentUserId: actor.id, data: users }, { headers: CORS });
   } catch (error) {
     return Response.json({ success: false, error: error.message }, { status: 500, headers: CORS });

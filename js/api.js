@@ -113,6 +113,21 @@ function getTodayDate() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+// 월(YYYY-MM) 또는 일(YYYY-MM-DD) 선택값을 서버 기간 조회 조건(from 이상, before 미만)으로 바꾼다.
+function getPeriodRangeQuery(period, selected) {
+  const pad = n => String(n).padStart(2, '0');
+  const format = d => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+  if (period === 'day' && /^\d{4}-\d{2}-\d{2}$/.test(selected)) {
+    const [y, m, d] = selected.split('-').map(Number);
+    return `from=${selected}&before=${format(new Date(Date.UTC(y, m - 1, d + 1)))}`;
+  }
+  if (period !== 'day' && /^\d{4}-\d{2}$/.test(selected)) {
+    const [y, m] = selected.split('-').map(Number);
+    return `from=${selected}-01&before=${format(new Date(Date.UTC(y, m, 1)))}`;
+  }
+  return '';
+}
+
 function goBackOrHome(event) {
   if (event) event.preventDefault();
   if (window.history.length > 1) {

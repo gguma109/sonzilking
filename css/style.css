@@ -1961,3 +1961,20 @@ body:not(.main-body) .company-picker-select:hover { background: var(--primary-pa
   .item-statistics-date-separator { display: none; }
   .item-statistics-result-heading { align-items: flex-start; flex-direction: column; gap: 5px; }
 }
+
+/* 거래명세서 목록 '더 보기' */
+.statements-load-more {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--primary-pale);
+  color: var(--primary);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.statements-load-more:disabled { opacity: 0.6; cursor: default; }
