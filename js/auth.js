@@ -61,6 +61,7 @@ function checkAuth() {
   
   // If we are on index.html
   if (authSection && menuSection) {
+    if (typeof showAdminMenuIfAllowed === 'function') showAdminMenuIfAllowed();
     if (token && userStr) {
       authSection.style.display = 'none';
       menuSection.style.display = 'grid';
