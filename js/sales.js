@@ -161,6 +161,11 @@ async function saveSale() {
 
   const values = calculateSales();
 
+  if (values.grandTotal < 0 || values.kilosTotal < 0) {
+    showToast('차감액이 판매금액보다 큽니다. 합계가 0원 이상이 되도록 확인해주세요.', 'error');
+    return;
+  }
+
   if (document.getElementById('calc-kilos').value.trim() && values.itemErrors.length) {
     const error = values.itemErrors[0];
     showToast(`❗ 품목 ${error.lineNumber}번째 줄: ${error.error}`, 'error');
@@ -375,7 +380,7 @@ function getStatementItems(record) {
     salesLines.forEach((line, index) => items.push({
       name: salesLines.length > 1 ? `판매내역 ${index + 1}` : '판매내역',
       description: line,
-      amount: parseAndCalculateMath(line)
+      amount: ItemParser.parseItems(line).errors.length ? parseAndCalculateMath(line) : ItemParser.parseItems(line).total
     }));
   } else if (Number(record.kilosTotal) > 0) {
     items.push({ name: '판매금액', description: '', amount: Number(record.kilosTotal) });

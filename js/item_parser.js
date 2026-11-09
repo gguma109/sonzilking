@@ -50,6 +50,23 @@
 
   function parseItemExpression(rawExpression, lineNumber = 1) {
     const expression = stripWrittenAmount(rawExpression);
+    // A deduction is a complete line/expression, not arbitrary arithmetic.
+    // Accept one amount and one minus sign with an optional description.
+    if (/[-−]/.test(expression)) {
+      const normalized = expression.replace(/−/g, '-');
+      const amount = '(\\d[\\d,]*(?:\\.\\d+)?)';
+      const leading = normalized.match(new RegExp('^-\\s*([^\\d+*/×÷=\\-]*?)\\s*' + amount + '\\s*원?\\s*$'));
+      const trailing = normalized.match(new RegExp('^([^\\d+*/×÷=\\-]+?)\\s*-\\s*' + amount + '\\s*원?\\s*$'));
+      const match = leading || trailing;
+      if (!match) return { valid: false, lineNumber, expression: rawExpression, error: '차감은 한 줄에 설명과 마이너스 금액 하나만 입력해주세요.' };
+      const value = Number(match[2].replace(/,/g, ''));
+      if (!Number.isFinite(value)) return { valid: false, lineNumber, expression: rawExpression, error: '차감 금액을 확인해주세요.' };
+      const name = match[1].trim() || '차감';
+      return { valid: true, lineNumber, name, key: normalizeName(name), quantity: 0,
+        quantityUnit: '금액', unitPrice: 0, amount: -Math.round(value),
+        amountOnly: true, deduction: true, expression: rawExpression };
+    }
+    if (/[\/÷]/.test(expression)) return { valid: false, lineNumber, expression: rawExpression, error: '품목 입력은 나누기를 지원하지 않습니다.' };
     const parts = expression.split(/[\*×]/).map(part => part.trim());
     let name = '';
     let quantityText = '';
