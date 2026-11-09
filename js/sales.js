@@ -161,10 +161,6 @@ async function saveSale() {
 
   const values = calculateSales();
 
-  if (values.grandTotal < 0 || values.kilosTotal < 0) {
-    showToast('차감액이 판매금액보다 큽니다. 합계가 0원 이상이 되도록 확인해주세요.', 'error');
-    return;
-  }
 
   if (document.getElementById('calc-kilos').value.trim() && values.itemErrors.length) {
     const error = values.itemErrors[0];
@@ -641,7 +637,7 @@ async function getStatementBalance(record) {
     const cutoff = String(record.createdAt || `${saleDate}T23:59:59.999Z`);
     const query = new URLSearchParams({ beforeDate: saleDate, beforeCreatedAt: cutoff, excludeSaleId: record.id || '' });
     const response = await API.get(`companies/${encodeURIComponent(record.companyName)}/balance?${query.toString()}`);
-    return Math.max(0, Number(response.balance) || 0);
+    return Number(response.balance) || 0;
   } catch (error) {
     console.warn('미수금 조회 실패:', error);
     return null;
@@ -895,6 +891,7 @@ function renderUnpaidRecords(records) {
         <span>총 미수금액</span><strong>${formatNumber(totalAmount)}원</strong>
         <span>${paymentLabel}</span><strong style="color: var(--success);">${formatNumber(paidAmount)}원</strong>
         <span>남은 미수금</span><strong style="color: ${isPaid ? 'var(--success)' : 'var(--danger)'}; font-size: 1.05rem;">${formatNumber(balance)}원</strong>
+        ${paidAmount > totalAmount ? `<span>다음 거래 차감 이월</span><strong>${formatNumber(paidAmount - totalAmount)}원</strong>` : ''}
       </div>
       
       <!-- 수납 입력 폼 -->
@@ -921,11 +918,13 @@ function buildUnpaidAllocation(sales, payments) {
   const orderedPayments = [...(payments || [])].sort((a, b) =>
     String(a.createdAt || '').localeCompare(String(b.createdAt || '')) || String(a.id || '').localeCompare(String(b.id || ''))
   );
-  const totalAmount = orderedSales.reduce((sum, sale) => sum + Math.max(0, Number(sale.total) || 0), 0);
+  const totalAmount = orderedSales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
   const paidAmount = orderedPayments.reduce((sum, payment) => sum + Math.max(0, Number(payment.amount) || 0), 0);
-  let unallocatedPayment = paidAmount;
+  const deductionAmount = orderedSales.reduce((sum, sale) => sum + Math.max(0, -(Number(sale.total) || 0)), 0);
+  let unallocatedPayment = paidAmount + deductionAmount;
   const allocatedSales = orderedSales.map(sale => {
-    const amount = Math.max(0, Number(sale.total) || 0);
+    const amount = Number(sale.total) || 0;
+    if (amount < 0) return { ...sale, amount, appliedAmount: 0, balance: 0, status: '차감' };
     const appliedAmount = Math.min(amount, unallocatedPayment);
     unallocatedPayment = Math.max(0, unallocatedPayment - appliedAmount);
     const balance = Math.max(0, amount - appliedAmount);
@@ -979,6 +978,7 @@ async function toggleUnpaidDetails(recordIndex) {
         <span>판매 합계<strong>${formatNumber(allocation.totalAmount)}원</strong></span>
         <span>수납 합계<strong>${formatNumber(allocation.paidAmount)}원</strong></span>
         <span>남은 미수금<strong>${formatNumber(allocation.balance)}원</strong></span>
+        ${allocation.totalAmount < allocation.paidAmount ? `<span>다음 거래 차감 이월<strong>${formatNumber(allocation.paidAmount - allocation.totalAmount)}원</strong></span>` : ''}
       </div>
       <div class="unpaid-ledger-section-title">품목별 미수 현황 <small>오래된 판매부터 수납 반영</small></div>
       ${allocation.sales.map(sale => `<article class="unpaid-allocation-item">
@@ -989,7 +989,7 @@ async function toggleUnpaidDetails(recordIndex) {
         <div class="unpaid-allocation-item-detail">${escapeHtml(String(sale.kilosText || sale.memo || '판매 기록').trim())}</div>
         <div class="unpaid-allocation-item-amounts">
           <span>판매금액<strong>${formatNumber(sale.amount)}원</strong></span>
-          <span>수납반영<strong>${formatNumber(sale.appliedAmount)}원</strong></span>
+          <span>수납·차감 반영<strong>${formatNumber(sale.appliedAmount)}원</strong></span>
           <span>남은미수<strong>${formatNumber(sale.balance)}원</strong></span>
         </div>
       </article>`).join('')}

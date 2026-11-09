@@ -65,3 +65,22 @@ test('formal statement and statistics preserve deductions without negative quant
   assert.equal(totals.amount, 55000);
   assert.equal(totals.quantityText, '5kg');
 });
+
+test('negative sale offsets old receivables without pretending to be a cash payment', () => {
+  const sales = [{ id: 'old', date: '2026-11-08', total: 130000 }, { id: 'today', date: '2026-11-09', total: -5000 }];
+  const allocation = context.buildUnpaidAllocation(sales, [{ amount: 10000 }]);
+  assert.equal(allocation.totalAmount, 125000);
+  assert.equal(allocation.paidAmount, 10000);
+  assert.equal(allocation.balance, 115000);
+  assert.equal(allocation.sales[0].balance, 115000);
+  assert.equal(allocation.sales[1].amount, -5000);
+  assert.equal(allocation.sales[1].status, '차감');
+});
+
+test('standalone deduction can exceed today sales; surplus stays available for later sales', () => {
+  const parsed = parse('광어 * 5kg * 13000원\n차감 - 70000원');
+  assert.equal(parsed.total, -5000);
+  const allocation = context.buildUnpaidAllocation([{ total: -70000 }, { total: 65000 }, { total: 10000 }], []);
+  assert.equal(allocation.balance, 5000);
+  assert.equal(allocation.sales.reduce((sum, sale) => sum + sale.balance, 0), 5000);
+});

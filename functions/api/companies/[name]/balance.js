@@ -43,7 +43,7 @@ export async function onRequestGet({ env, request, params, data }) {
           WHERE userId = ? AND TRIM(LOWER(companyName)) = TRIM(LOWER(?))), 0) AS balance
     `).bind(data.userId, companyName, data.userId, companyName).first();
 
-    const balance = Math.max(0, result ? (result.balance || 0) : 0);
+    const balance = Number(result?.balance) || 0;
 
     return Response.json(
       { success: true, companyName, balance },

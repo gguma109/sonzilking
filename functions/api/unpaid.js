@@ -79,7 +79,7 @@ export async function onRequestGet({ env, request, data }) {
         CASE WHEN totalAmount - paidAmount > 0 THEN totalAmount - paidAmount ELSE 0 END AS balance,
         CASE WHEN totalAmount - paidAmount <= 0 THEN 1 ELSE 0 END AS paidInFull
       FROM totals
-      WHERE totalAmount > 0
+      WHERE totalAmount != 0 OR paidAmount != 0
       ORDER BY paidInFull ASC, balance DESC, companyName ASC
     `).bind(data.userId, data.userId).all();
 

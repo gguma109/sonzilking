@@ -146,7 +146,7 @@ export function attachPreviousBalances(records, sales, payments) {
       if (row.date < sourceDate || (row.date === sourceDate && row.createdAt < sourceCreatedAt)) lo = mid + 1;
       else hi = mid;
     }
-    return { ...result, previousBalance: Math.max(0, (lo ? rows[lo - 1].runningTotal : 0) - (paid.get(companyKey) || 0)) };
+    return { ...result, previousBalance: (lo ? rows[lo - 1].runningTotal : 0) - (paid.get(companyKey) || 0) };
   });
 }
 

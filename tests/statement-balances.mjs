@@ -5,6 +5,12 @@ import { test } from 'node:test';
 const source = fs.readFileSync(new URL('../functions/api/statements.js', import.meta.url), 'utf8');
 const { attachPreviousBalances } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
 
+test('negative prior transaction is carried to the next statement', () => {
+  const rows = attachPreviousBalances([{ companyKey: 'a', sourceDate: '2026-11-10', sourceCreatedAt: '10', statementType: 'sale' }],
+    [{ companyKey: 'a', date: '2026-11-09', createdAt: '10', total: -5000 }], []);
+  assert.equal(rows[0].previousBalance, -5000);
+});
+
 test('cumulative balances match the original correlated calculation', () => {
   let seed = 42;
   const random = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
@@ -21,8 +27,8 @@ test('cumulative balances match the original correlated calculation', () => {
     records.forEach((record, i) => {
       const prior = sales.filter(s => s.companyKey === record.companyKey &&
         (s.date < record.sourceDate || (s.date === record.sourceDate && s.createdAt < record.sourceCreatedAt)));
-      const expected = record.statementType === 'purchase' ? null : Math.max(0,
-        prior.reduce((sum, s) => sum + s.total, 0) - (payments.find(p => p.companyKey === record.companyKey)?.amount || 0));
+      const expected = record.statementType === 'purchase' ? null :
+        prior.reduce((sum, s) => sum + s.total, 0) - (payments.find(p => p.companyKey === record.companyKey)?.amount || 0);
       assert.equal(actual[i].previousBalance, expected);
       assert.equal('companyKey' in actual[i], false);
     });
